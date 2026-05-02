@@ -1,0 +1,53 @@
+# ---- Secrets (NEVER commit) ----
+backend/.env
+backend/.env.*
+backend/credentials.json
+backend/credentials_web.json
+backend/token.json
+android/local.properties
+keystore/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ---- Android / Gradle ----
+.gradle/
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild
+.cxx/
+**/build/
+**/generated/
+
+# ---- macOS / Windows / IDE ----
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ---- Claude Code session state ----
+.claude/
+
+# ---- Logs ----
+*.log

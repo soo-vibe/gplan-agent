@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="오늘 새로 등록된 일정"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="6dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="12dp">
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical"
+            android:background="#E3F2FD" android:padding="10dp" android:layout_marginEnd="4dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="SMS" android:textSize="11sp" android:textColor="#1565C0"/>
+            <TextView android:id="@+id/tvTodaySms" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="0"
+                android:textSize="24sp" android:textStyle="bold" android:textColor="#1565C0"/>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical"
+            android:background="#F3E5F5" android:padding="10dp" android:layout_marginEnd="4dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="KakaoTalk" android:textSize="11sp" android:textColor="#6A1B9A"/>
+            <TextView android:id="@+id/tvTodayKakao" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="0"
+                android:textSize="24sp" android:textStyle="bold" android:textColor="#6A1B9A"/>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical"
+            android:background="#E8F5E9" android:padding="10dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Gmail" android:textSize="11sp" android:textColor="#2E7D32"/>
+            <TextView android:id="@+id/tvTodayGmail" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="0"
+                android:textSize="24sp" android:textStyle="bold" android:textColor="#2E7D32"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Waiting for new messages..."
+        android:textSize="12sp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="상세"
+        android:textStyle="bold"
+        android:layout_marginBottom="4dp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:id="@+id/llSmsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </ScrollView>
+
+</LinearLayout>
