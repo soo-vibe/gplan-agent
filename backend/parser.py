@@ -32,6 +32,11 @@ _STATIC_SYSTEM = (
 
 _client: anthropic.Anthropic | None = None
 
+# Bound the Anthropic call so a slow upstream can't hang the entire Cloud
+# Run worker thread. Cloud Run request timeout is 120s; keep margin for
+# our own work after the LLM call (Calendar insert, Firestore writes).
+_ANTHROPIC_TIMEOUT_SEC = 30.0
+
 
 def _get_client() -> anthropic.Anthropic:
     global _client
@@ -39,7 +44,7 @@ def _get_client() -> anthropic.Anthropic:
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
             raise RuntimeError("ANTHROPIC_API_KEY unset")
-        _client = anthropic.Anthropic(api_key=api_key)
+        _client = anthropic.Anthropic(api_key=api_key, timeout=_ANTHROPIC_TIMEOUT_SEC)
     return _client
 
 
@@ -59,6 +64,15 @@ def _parse_one_response(response) -> dict | None:
     return None
 
 
+# Errors the Anthropic SDK doesn't already auto-retry but we want to retry once.
+_TRANSIENT_ERRORS = (
+    anthropic.APITimeoutError,
+    anthropic.APIConnectionError,
+    anthropic.RateLimitError,
+    anthropic.InternalServerError,
+)
+
+
 def parse_schedule(message: str) -> dict:
     today = datetime.now(KST)
     tomorrow = today + timedelta(days=1)
@@ -70,18 +84,24 @@ def parse_schedule(message: str) -> dict:
 
     client = _get_client()
     # 256 covers our schema's typical output (~150 tokens). Retry once on a
-    # JSON parse failure — Haiku 4.5 has been seen to occasionally truncate or
-    # emit prose around the JSON; a fresh sample usually fixes it.
-    for _attempt in range(2):
-        response = client.messages.create(
-            model="claude-haiku-4-5",
-            max_tokens=256,
-            system=[
-                {"type": "text", "text": _STATIC_SYSTEM, "cache_control": {"type": "ephemeral"}},
-                {"type": "text", "text": dynamic_system},
-            ],
-            messages=[{"role": "user", "content": message}],
-        )
+    # JSON parse failure or a transient API error — Haiku 4.5 occasionally
+    # truncates or wraps prose, and the SDK's built-in retries don't cover
+    # client-side timeouts.
+    for attempt in range(2):
+        try:
+            response = client.messages.create(
+                model="claude-haiku-4-5",
+                max_tokens=256,
+                system=[
+                    {"type": "text", "text": _STATIC_SYSTEM, "cache_control": {"type": "ephemeral"}},
+                    {"type": "text", "text": dynamic_system},
+                ],
+                messages=[{"role": "user", "content": message}],
+            )
+        except _TRANSIENT_ERRORS:
+            if attempt == 0:
+                continue
+            raise
         parsed = _parse_one_response(response)
         if parsed is not None:
             return parsed

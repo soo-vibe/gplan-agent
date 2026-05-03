@@ -1,5 +1,7 @@
 from flask import Flask, g, jsonify, request
+import logging
 import os
+import uuid
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from email.utils import parseaddr
@@ -7,10 +9,14 @@ from zoneinfo import ZoneInfo
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), override=True)
 
+import logging_setup
+logging_setup.configure()
+log = logging.getLogger("gplan")
+
 import firestore_repo
 
 from parser import parse_schedule, build_iso_datetime
-from calendar_service import create_event, delete_event, get_calendar_service
+from calendar_service import create_event, delete_event, get_calendar_service, make_event_id
 from googleapiclient.errors import HttpError
 from gmail_service import get_unprocessed_emails, mark_processed
 from google_auth import ReauthRequired
@@ -28,6 +34,15 @@ MAX_EVENT_ID_CHARS = 1024
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_REQUEST_BYTES
 app.register_blueprint(oauth_bp)
+
+
+@app.before_request
+def _attach_request_id():
+    # Cloud Run propagates the trace via X-Cloud-Trace-Context (format:
+    # "TRACE_ID/SPAN_ID;o=1"). Reusing it lets Cloud Logging group our
+    # application logs with the request log automatically.
+    raw = request.headers.get("X-Cloud-Trace-Context", "")
+    g.request_id = raw.split("/", 1)[0] if raw else uuid.uuid4().hex[:16]
 
 
 def _resolve_end_time(parsed: dict) -> str:
@@ -74,9 +89,21 @@ def _build_description(parsed: dict, source: str, sender: str, sender_org: str) 
     return meta_line or body
 
 
-def _save_event(user: dict, parsed: dict, source: str, sender: str = "", sender_org: str = "") -> dict:
+def _save_event(
+    user: dict,
+    parsed: dict,
+    source: str,
+    sender: str = "",
+    sender_org: str = "",
+    *,
+    idem_key: str | None = None,
+) -> dict:
     start_iso = build_iso_datetime(parsed["date"], parsed["start_time"])
     end_iso = build_iso_datetime(parsed["date"], _resolve_end_time(parsed))
+    # Deterministic id makes Calendar inserts idempotent on retry, on top of
+    # the Firestore dedup record. If two concurrent ticks race to create the
+    # same event, the second receives 409 and reads the existing back.
+    event_id = make_event_id(user["id"], source, idem_key) if idem_key else None
     event = create_event(
         user,
         title=_build_title(parsed["title"], sender, sender_org),
@@ -85,6 +112,7 @@ def _save_event(user: dict, parsed: dict, source: str, sender: str = "", sender_
         description=_build_description(parsed, source, sender, sender_org),
         location=parsed.get("location", ""),
         source=source,
+        event_id=event_id,
     )
     # Track ownership so /event/<id> DELETE can verify the agent created it.
     if event.get("id"):
@@ -122,7 +150,7 @@ def _process_message(
     parsed = parse_schedule(text)
     event = None
     if parsed.get("has_schedule"):
-        event = _save_event(user, parsed, source, sender=sender, sender_org=sender_org)
+        event = _save_event(user, parsed, source, sender=sender, sender_org=sender_org, idem_key=key)
     firestore_repo.record_processed(
         user["id"], source, key, event["id"] if event else None
     )
@@ -158,7 +186,11 @@ def _handle_too_large(_e):
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok"})
+    fs_ok = firestore_repo.is_reachable()
+    return jsonify({
+        "status": "ok" if fs_ok else "degraded",
+        "firestore": fs_ok,
+    }), 200 if fs_ok else 503
 
 
 @app.route("/me", methods=["GET"])
@@ -280,6 +312,13 @@ def gmail_check_all():
             summary["errors"].append({"user": user["id"], "err": "reauth_required"})
         except Exception as e:
             summary["errors"].append({"user": user["id"], "err": type(e).__name__})
+    log.info("gmail-check-all done", extra={
+        "request_id": getattr(g, "request_id", ""),
+        "users": summary["users"],
+        "saved": summary["saved"],
+        "skipped": summary["skipped"],
+        "error_count": len(summary["errors"]),
+    })
     return jsonify(summary)
 
 
@@ -295,6 +334,7 @@ def access_request():
     email so the developer can add them. Per-email throttle in repo layer +
     per-IP throttle here to bound enumeration via different addresses."""
     if ip_rate_limited():
+        log.warning("access-request throttled by ip", extra={"request_id": getattr(g, "request_id", "")})
         return jsonify({
             "success": False,
             "throttled": True,
@@ -352,6 +392,11 @@ def delete_event_route(event_id: str):
     # user's behalf. Without this, a leaked bearer + iterated event IDs could
     # wipe arbitrary calendar entries.
     if not firestore_repo.is_event_owned(g.user["id"], event_id):
+        log.warning("event delete denied (not owned)", extra={
+            "request_id": getattr(g, "request_id", ""),
+            "user_id": g.user["id"],
+            "event_id": event_id,
+        })
         return jsonify({"success": False, "error": "not_found_or_forbidden"}), 404
 
     try:

@@ -46,6 +46,16 @@ def _get_client() -> firestore.Client:
     return _client
 
 
+def is_reachable() -> bool:
+    """Cheap connectivity + IAM probe used by /health. Returns True if a
+    minimum-cost read against Firestore succeeds."""
+    try:
+        next(iter(_get_client().collection(USERS_COLLECTION).limit(1).stream()), None)
+        return True
+    except Exception:
+        return False
+
+
 def _doc_with_id(snapshot) -> dict | None:
     if not snapshot.exists:
         return None
