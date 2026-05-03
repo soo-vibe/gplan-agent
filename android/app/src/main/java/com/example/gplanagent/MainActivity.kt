@@ -165,7 +165,7 @@ class MainActivity : AppCompatActivity() {
         val sourceColor = when (event.source) {
             "sms", "rcs" -> 0xFF1565C0.toInt()
             "kakao" -> 0xFF6A1B9A.toInt()
-            "gmail" -> 0xFF2E7D32.toInt()
+            "gmail", "naver" -> 0xFF2E7D32.toInt()
             else -> 0xFF757575.toInt()
         }
 

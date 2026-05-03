@@ -28,7 +28,7 @@ def _resolve_end_time(parsed: dict) -> str:
     return f"{str(int(h) + 1).zfill(2)}:{m}"
 
 
-SOURCE_LABELS = {"sms": "SMS", "kakao": "KakaoTalk", "gmail": "Gmail", "rcs": "RCS"}
+SOURCE_LABELS = {"sms": "SMS", "kakao": "KakaoTalk", "gmail": "Gmail", "rcs": "RCS", "naver": "네이버 메일"}
 
 
 def _split_email_from(raw_from: str) -> tuple[str, str]:
@@ -271,7 +271,7 @@ def stats():
 
     today_added.sort(key=lambda e: e.get("created", ""), reverse=True)
 
-    counts = {"sms": 0, "kakao": 0, "gmail": 0, "rcs": 0, "unknown": 0}
+    counts = {"sms": 0, "kakao": 0, "gmail": 0, "rcs": 0, "naver": 0, "unknown": 0}
     items = []
     for e in today_added:
         src = e.get("extendedProperties", {}).get("private", {}).get("source", "unknown")
@@ -285,15 +285,16 @@ def stats():
             "source": src,
         })
 
-    # SMS 카운터에 RCS도 합산해서 표시 (사용자 입장에선 둘 다 '문자')
+    # 사용자 관점에서 합산: SMS + RCS = '문자', Gmail + Naver = '메일'
     sms_combined = counts["sms"] + counts["rcs"]
+    mail_combined = counts["gmail"] + counts["naver"]
 
     return jsonify({
         "today_added": {
             "total": len(today_added),
             "sms": sms_combined,
             "kakao": counts["kakao"],
-            "gmail": counts["gmail"],
+            "gmail": mail_combined,
         },
         "today_list": items,
     })

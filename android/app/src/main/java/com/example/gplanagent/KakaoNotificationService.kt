@@ -14,12 +14,14 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
- * Doubles as our long-lived host for the RCS ContentObserver.
+ * NotificationListenerService that captures schedule-bearing messages from
+ * messaging apps and forwards them to the backend for parsing.
  *
- * The OS keeps NotificationListenerService bound as long as notification
- * access is granted, which gives us a reliable place to watch
- * content://im/chat in real time. When that URI changes (new RCS arrives),
- * we trigger RcsSync.runOnce.
+ * Doubles as the host for the RCS ContentObserver (kept alive by the OS as
+ * long as notification access is granted).
+ *
+ * Class name kept as KakaoNotificationService for backward compatibility with
+ * the existing manifest entry and notification access grant.
  */
 class KakaoNotificationService : NotificationListenerService() {
 
@@ -27,9 +29,7 @@ class KakaoNotificationService : NotificationListenerService() {
 
     private val rcsObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) {
-            scope.launch {
-                RcsSync.runOnce(applicationContext)
-            }
+            scope.launch { RcsSync.runOnce(applicationContext) }
         }
     }
 
@@ -42,7 +42,6 @@ class KakaoNotificationService : NotificationListenerService() {
                 rcsObserver,
             )
         } catch (e: Exception) {
-            // 일부 디바이스(non-Samsung)는 이 URI가 없을 수 있음 — silent skip
             e.printStackTrace()
         }
     }
@@ -54,26 +53,38 @@ class KakaoNotificationService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (sbn.packageName != "com.kakao.talk") return
         if (!AuthManager.isLoggedIn(this)) return
 
+        val pkg = sbn.packageName
+        val source = when (pkg) {
+            "com.kakao.talk" -> "kakao"
+            "com.google.android.gm" -> "gmail"
+            "com.nhn.android.mail" -> "naver"
+            "com.nhn.android.search" -> "naver"  // 네이버 통합앱의 메일 알림
+            else -> return
+        }
+
         val extras = sbn.notification.extras
-        val text = extras.getCharSequence("android.text")?.toString() ?: ""
+        val text = extras.getCharSequence("android.text")?.toString().orEmpty()
+        val bigText = extras.getCharSequence("android.bigText")?.toString().orEmpty()
         val title = extras.getCharSequence("android.title")?.toString().orEmpty()
         val subText = extras.getCharSequence("android.subText")?.toString().orEmpty()
 
-        if (text.isBlank()) return
+        // 카톡: text가 본문, 이메일: bigText에 더 긴 본문이 들어있음
+        val body = if (bigText.length > text.length) bigText else text
+        if (body.isBlank()) return
 
-        // 1:1 채팅: title = 발신자 닉네임, subText 비어있음
-        // 그룹 채팅: title = 발신자 닉네임, subText = 방 이름 (대개)
+        // 메일에 한해서 사전 필터 — LLM 호출 비용 절약
+        if (source != "kakao" && !ScheduleHeuristic.looksLikeSchedule(title, body)) return
+
         val sender = title
         val senderOrg = subText
 
         scope.launch {
             try {
                 val result = ApiService.parseAndSave(
-                    this@KakaoNotificationService, text,
-                    source = "kakao",
+                    this@KakaoNotificationService, body,
+                    source = source,
                     sender = sender,
                     senderOrg = senderOrg,
                 )

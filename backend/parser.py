@@ -23,10 +23,10 @@ def parse_schedule(message: str) -> dict:
         "Message may be in Korean or English."
     )
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    # Haiku로 다운그레이드 — 일정 추출은 단순 작업이라 Opus 대비 ~10x 비용 절감
     response = client.messages.create(
-        model="claude-opus-4-7",
+        model="claude-haiku-4-5",
         max_tokens=512,
-        thinking={"type": "adaptive"},
         system=system_prompt,
         messages=[{"role": "user", "content": message}],
     )
