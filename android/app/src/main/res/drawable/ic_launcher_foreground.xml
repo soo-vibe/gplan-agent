@@ -5,8 +5,8 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Material 'event_note' icon scaled 3x and centered in the 108x108 canvas.
-         24*3 = 72, fits exactly inside the adaptive-icon safe zone. -->
+    <!-- Calendar outline (Material 'calendar_today') scaled 3x and centered.
+         24x24 viewport scaled to 72x72, fits inside the adaptive-icon safe zone. -->
     <group
         android:translateX="18"
         android:translateY="18"
@@ -14,6 +14,29 @@
         android:scaleY="3">
         <path
             android:fillColor="#FFFFFF"
-            android:pathData="M17,10H7V12H17V10M15,14H7V16H15V14M19,3H18V1H16V3H8V1H6V3H5C3.89,3 3,3.9 3,5V21A2,2 0 0,0 5,23H19A2,2 0 0,0 21,21V5C21,3.89 20.1,3 19,3M19,21H5V8H19V21Z" />
+            android:fillType="evenOdd"
+            android:pathData="M19,3h-1V1h-2v2H8V1H6v2H5C3.89,3,3,3.9,3,5v16c0,1.1,0.89,2,2,2h14c1.1,0,2-0.9,2-2V5C21,3.9,20.1,3,19,3z M19,21H5V8h14V21z" />
     </group>
+
+    <!-- Date '5' inside the calendar body (Material 'looks_5' digit path). -->
+    <group
+        android:translateX="30"
+        android:translateY="41"
+        android:scaleX="1.8"
+        android:scaleY="1.8">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M15,15H9v2h6c1.1,0,2-0.9,2-2v-3c0-1.1-0.9-2-2-2h-4V8h6V6H9v6h6V15z" />
+    </group>
+
+    <!-- Plus badge (orange circle with white plus) in the top-right corner. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M78,30 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0 Z" />
+    <path
+        android:fillColor="#EF6C00"
+        android:pathData="M78,30 m-13,0 a13,13 0 1,0 26,0 a13,13 0 1,0 -26,0 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M76,21 H80 V39 H76 Z M69,28 H87 V32 H69 Z" />
 </vector>
