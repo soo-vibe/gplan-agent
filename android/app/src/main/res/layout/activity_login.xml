@@ -54,6 +54,16 @@
         app:backgroundTint="#1565C0"
         app:cornerRadius="10dp" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnRequestAccess"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="처음 사용하시나요? 등록 요청"
+        android:textColor="#1565C0"
+        android:textSize="13sp"
+        android:layout_marginTop="8dp" />
+
     <TextView
         android:id="@+id/tvLoginStatus"
         android:layout_width="wrap_content"

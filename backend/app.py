@@ -192,6 +192,36 @@ def admin_users():
     return jsonify({"users": firestore_repo.list_users_summary()})
 
 
+@app.route("/access-request", methods=["POST"])
+def access_request():
+    """Public endpoint: friend who isn't in OAuth Test Users yet leaves an
+    email so the developer can add them in the GCP console."""
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip()
+    name = (data.get("name") or "").strip()
+    if not email or "@" not in email:
+        return jsonify({"error": "valid email required"}), 400
+    result = firestore_repo.add_pending_user(email=email, name=name)
+    return jsonify({
+        "success": True,
+        "created": result["created"],
+        "message": "요청이 접수되었습니다. 승인 후 다시 로그인해주세요." if result["created"] else "이미 접수된 요청입니다. 승인 대기 중.",
+    })
+
+
+@app.route("/admin/pending", methods=["GET"])
+@require_scheduler
+def admin_pending():
+    return jsonify({"pending": firestore_repo.list_pending_users()})
+
+
+@app.route("/admin/pending/<email>", methods=["POST"])
+@require_scheduler
+def admin_mark_added(email: str):
+    ok = firestore_repo.mark_pending_added(email)
+    return jsonify({"success": ok})
+
+
 @app.route("/event/<event_id>", methods=["DELETE"])
 @require_auth
 def delete_event_route(event_id: str):

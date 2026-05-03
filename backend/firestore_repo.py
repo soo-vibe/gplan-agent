@@ -15,6 +15,7 @@ from typing import Iterator
 from google.cloud import firestore
 
 USERS_COLLECTION = "users"
+PENDING_USERS_COLLECTION = "pending_users"
 
 
 def _hash_token(raw_token: str) -> str:
@@ -147,6 +148,66 @@ def iter_active_users() -> Iterator[dict]:
         doc = _doc_with_id(snap)
         if doc:
             yield doc
+
+
+def add_pending_user(email: str, name: str = "") -> dict:
+    """Records an access request from someone not yet in OAuth Test Users.
+    Returns {"created": bool, "doc": {...}}. Email used as the doc id (lowercased)
+    so duplicate requests upsert without piling up rows.
+    """
+    if not email:
+        raise ValueError("email required")
+    email_lc = email.strip().lower()
+    doc_ref = _get_client().collection(PENDING_USERS_COLLECTION).document(email_lc)
+    snap = doc_ref.get()
+    now = datetime.now(timezone.utc)
+
+    if snap.exists:
+        existing = snap.to_dict() or {}
+        doc_ref.update({
+            "last_requested_at": now,
+            "request_count": (existing.get("request_count", 0) + 1),
+        })
+        return {"created": False, "doc": {**existing, "id": email_lc, "last_requested_at": now}}
+
+    payload = {
+        "email": email_lc,
+        "name": name,
+        "status": "pending",
+        "first_requested_at": now,
+        "last_requested_at": now,
+        "request_count": 1,
+    }
+    doc_ref.set(payload)
+    return {"created": True, "doc": {**payload, "id": email_lc}}
+
+
+def list_pending_users() -> list[dict]:
+    out = []
+    query = (
+        _get_client()
+        .collection(PENDING_USERS_COLLECTION)
+        .where(filter=firestore.FieldFilter("status", "==", "pending"))
+        .stream()
+    )
+    for snap in query:
+        d = snap.to_dict() or {}
+        out.append({
+            "email": d.get("email", snap.id),
+            "name": d.get("name", ""),
+            "first_requested_at": d.get("first_requested_at").isoformat() if d.get("first_requested_at") else None,
+            "request_count": d.get("request_count", 1),
+        })
+    return out
+
+
+def mark_pending_added(email: str) -> bool:
+    email_lc = (email or "").strip().lower()
+    doc_ref = _get_client().collection(PENDING_USERS_COLLECTION).document(email_lc)
+    if not doc_ref.get().exists:
+        return False
+    doc_ref.update({"status": "added", "added_at": datetime.now(timezone.utc)})
+    return True
 
 
 def list_users_summary() -> list[dict]:

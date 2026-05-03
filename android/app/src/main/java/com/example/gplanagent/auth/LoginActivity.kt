@@ -30,6 +30,10 @@ class LoginActivity : AppCompatActivity() {
             CustomTabsIntent.Builder().build().launchUrl(this, url)
         }
 
+        findViewById<Button>(R.id.btnRequestAccess).setOnClickListener {
+            startActivity(Intent(this, AccessRequestActivity::class.java))
+        }
+
         if (intent?.data == null && AuthManager.isLoggedIn(this)) {
             goNext()
             return

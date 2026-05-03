@@ -139,6 +139,24 @@ object ApiService {
         }
     }
 
+    /** Public endpoint — no auth header needed (called from AccessRequestActivity). */
+    suspend fun requestAccess(ctx: Context, email: String, name: String = ""): String = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("email", email)
+            .put("name", name)
+            .toString()
+            .toRequestBody(JSON)
+        val request = Request.Builder()
+            .url("$BASE_URL/access-request")
+            .post(body)
+            .build()
+        client.newCall(request).execute().use { response ->
+            val raw = response.body!!.string()
+            if (!response.isSuccessful) throw RuntimeException(raw)
+            JSONObject(raw).optString("message", "요청 접수됨")
+        }
+    }
+
     suspend fun logout(ctx: Context) = withContext(Dispatchers.IO) {
         try {
             val request = authedBuilder(ctx, "$BASE_URL/logout")

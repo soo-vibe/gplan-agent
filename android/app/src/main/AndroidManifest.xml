@@ -46,6 +46,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".auth.AccessRequestActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="false" />
 
