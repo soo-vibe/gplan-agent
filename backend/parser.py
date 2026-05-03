@@ -15,9 +15,11 @@ def parse_schedule(message: str) -> dict:
         "When the message says 'tomorrow' or 'naeeil' or '내일', use " + tomorrow.strftime("%Y-%m-%d") + ". "
         "Return JSON only, no other text. "
         "Format: {\"has_schedule\": true, \"title\": \"...\", \"date\": \"YYYY-MM-DD\", "
-        "\"start_time\": \"HH:MM\", \"end_time\": \"HH:MM\", \"location\": \"\", \"description\": \"\"} "
+        "\"start_time\": \"HH:MM\", \"end_time\": \"HH:MM\", \"location\": \"\", "
+        "\"meeting_url\": \"\", \"description\": \"\"} "
         "If no schedule found, return {\"has_schedule\": false}. "
         "Rules: if no end_time, add 1 hour to start_time. if no time, use 09:00. "
+        "meeting_url: extract Zoom/Google Meet/Microsoft Teams/Webex URL if present, else \"\". "
         "Message may be in Korean or English."
     )
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])

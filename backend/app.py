@@ -44,30 +44,25 @@ def _build_title(base_title: str, sender: str, sender_org: str) -> str:
     if not sender:
         return base_title
     if sender_org:
-        return f"{base_title} — {sender} ({sender_org})"
-    return f"{base_title} — {sender}"
+        return f"{base_title}:{sender}({sender_org})"
+    return f"{base_title}:{sender}"
 
 
 def _build_description(parsed: dict, source: str, sender: str, sender_org: str) -> str:
-    header_lines = []
-
+    # 첫 줄: 장소, meeting_url 등 핵심 정보를 콤마로 묶음. 빈 항목은 자동 생략.
+    meta_parts = []
     location = parsed.get("location", "").strip()
     if location:
-        header_lines.append(f"장소: {location}")
-    if sender:
-        if sender_org:
-            header_lines.append(f"보낸이: {sender} ({sender_org})")
-        else:
-            header_lines.append(f"보낸이: {sender}")
-    if source:
-        header_lines.append(f"출처: {SOURCE_LABELS.get(source, source)}")
+        meta_parts.append(location)
+    meeting_url = parsed.get("meeting_url", "").strip()
+    if meeting_url:
+        meta_parts.append(meeting_url)
+    meta_line = ", ".join(meta_parts)
 
     body = parsed.get("description", "").strip()
-    if header_lines and body:
-        return "\n".join(header_lines) + "\n\n" + body
-    if header_lines:
-        return "\n".join(header_lines)
-    return body
+    if meta_line and body:
+        return meta_line + "\n\n" + body
+    return meta_line or body
 
 
 def _save_event(user: dict, parsed: dict, source: str, sender: str = "", sender_org: str = "") -> dict:
