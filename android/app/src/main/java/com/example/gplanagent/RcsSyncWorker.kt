@@ -6,48 +6,17 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.example.gplanagent.auth.AuthManager
 import java.util.concurrent.TimeUnit
 
 /**
- * Periodically scans the device's RCS provider for new received messages and
- * forwards them to the backend for schedule extraction.
- *
- * The provider doesn't fire SMS_RECEIVED broadcasts, so we have no event-driven
- * hook — pure polling. Combined with an immediate sync on app foreground.
+ * Periodic backup poll. Real-time delivery comes from a ContentObserver
+ * registered in KakaoNotificationService; this Worker is the safety net for
+ * when that service isn't bound (notification access revoked, OS killed it).
  */
 class RcsSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
 
     override suspend fun doWork(): Result {
-        val ctx = applicationContext
-        if (!AuthManager.isLoggedIn(ctx)) return Result.success()
-
-        val messages = RcsHelper.queryNewMessages(ctx)
-        if (messages.isEmpty()) return Result.success()
-
-        var maxId = 0L
-        for (msg in messages) {
-            try {
-                val contact = ContactLookup.lookupByPhone(ctx, msg.address)
-                ApiService.parseAndSave(
-                    ctx, msg.body,
-                    source = "rcs",
-                    sender = contact.name.ifBlank { msg.address },
-                    senderOrg = contact.organization,
-                )
-                if (msg.id > maxId) maxId = msg.id
-            } catch (e: SessionExpiredException) {
-                ScheduleEventBus.notifySessionExpired()
-                break
-            } catch (e: NotLoggedInException) {
-                break
-            } catch (e: Exception) {
-                e.printStackTrace()
-                // skip this one but keep advancing through the rest
-                if (msg.id > maxId) maxId = msg.id
-            }
-        }
-        if (maxId > 0) RcsHelper.updateLastSeenId(ctx, maxId)
+        RcsSync.runOnce(applicationContext)
         return Result.success()
     }
 

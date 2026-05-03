@@ -76,29 +76,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshPermissionBanner()
-        // 앱이 포그라운드로 올 때마다 RCS 캐치업
         lifecycleScope.launch {
-            try {
-                val ctx = this@MainActivity.applicationContext
-                val msgs = RcsHelper.queryNewMessages(ctx)
-                var maxId = 0L
-                for (m in msgs) {
-                    try {
-                        val contact = ContactLookup.lookupByPhone(ctx, m.address)
-                        ApiService.parseAndSave(
-                            ctx, m.body,
-                            source = "rcs",
-                            sender = contact.name.ifBlank { m.address },
-                            senderOrg = contact.organization,
-                        )
-                    } catch (e: Exception) { e.printStackTrace() }
-                    if (m.id > maxId) maxId = m.id
-                }
-                if (maxId > 0) {
-                    RcsHelper.updateLastSeenId(ctx, maxId)
-                    runOnUiThread { loadStats() }
-                }
-            } catch (e: Exception) { e.printStackTrace() }
+            RcsSync.runOnce(applicationContext)
         }
     }
 
