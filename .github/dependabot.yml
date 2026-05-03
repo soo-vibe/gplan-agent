@@ -1,0 +1,55 @@
+# Dependabot keeps the runtime, build, and base-image versions current. PRs
+# land here for review; nothing auto-merges.
+#
+# Schedules are spread out so a busy week doesn't bury us in PRs.
+version: 2
+updates:
+  # Backend Python deps (Flask, anthropic, google-cloud-firestore, etc.)
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "deps"
+      - "backend"
+    commit-message:
+      prefix: "deps(backend)"
+
+  # Container base image (python:3.12-slim digest pin)
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "deps"
+      - "docker"
+    commit-message:
+      prefix: "deps(docker)"
+
+  # Android Gradle dependencies (androidx, OkHttp, kotlinx.coroutines, ...)
+  - package-ecosystem: "gradle"
+    directory: "/android/app"
+    schedule:
+      interval: "monthly"
+      day: "tuesday"
+    open-pull-requests-limit: 5
+    labels:
+      - "deps"
+      - "android"
+    commit-message:
+      prefix: "deps(android)"
+
+  # GitHub Actions (in case we add CI later — keeps any actions/* fresh)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "wednesday"
+    labels:
+      - "deps"
+      - "ci"
+    commit-message:
+      prefix: "deps(ci)"

@@ -1,0 +1,33 @@
+{
+  "displayName": "GPlan Agent: Cloud Run p95 latency > 30s",
+  "documentation": {
+    "content": "p95 request latency exceeded 30s for the past 5 minutes. The Cloud Run timeout is 120s, so this is a leading indicator of timeouts. Likely causes: Anthropic API slow, Gmail/Calendar quota throttle, Firestore congestion, cold starts (rare with min-instances=1).",
+    "mimeType": "text/markdown"
+  },
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "p95 latency > 30s over 5m",
+      "conditionThreshold": {
+        "filter": "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.labels.service_name=\"gplan-agent\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 30000,
+        "duration": "300s",
+        "aggregations": [
+          {
+            "alignmentPeriod": "60s",
+            "perSeriesAligner": "ALIGN_PERCENTILE_95",
+            "crossSeriesReducer": "REDUCE_MEAN"
+          }
+        ],
+        "trigger": {
+          "count": 1
+        }
+      }
+    }
+  ],
+  "alertStrategy": {
+    "autoClose": "1800s"
+  },
+  "enabled": true
+}
