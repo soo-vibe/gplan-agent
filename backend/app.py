@@ -9,7 +9,8 @@ import firestore_repo
 from email.utils import parseaddr
 
 from parser import parse_schedule, build_iso_datetime
-from calendar_service import create_event, get_calendar_service
+from calendar_service import create_event, delete_event, get_calendar_service
+from googleapiclient.errors import HttpError
 from gmail_service import get_unprocessed_emails, mark_processed
 from google_auth import ReauthRequired
 from oauth_routes import bp as oauth_bp
@@ -196,6 +197,20 @@ def admin_users():
     return jsonify({"users": firestore_repo.list_users_summary()})
 
 
+@app.route("/event/<event_id>", methods=["DELETE"])
+@require_auth
+def delete_event_route(event_id: str):
+    try:
+        delete_event(g.user, event_id)
+        return jsonify({"success": True})
+    except HttpError as e:
+        if e.resp.status in (404, 410):
+            return jsonify({"success": True, "note": "already deleted"})
+        return jsonify({"success": False, "error": str(e)}), e.resp.status
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/stats", methods=["GET"])
 @require_auth
 def stats():
@@ -239,6 +254,7 @@ def stats():
             src = "unknown"
         counts[src] += 1
         items.append({
+            "id": e.get("id", ""),
             "title": e.get("summary", ""),
             "start": e["start"].get("dateTime", e["start"].get("date")),
             "source": src,

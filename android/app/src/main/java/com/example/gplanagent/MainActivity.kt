@@ -2,9 +2,11 @@ package com.example.gplanagent
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -136,7 +138,7 @@ class MainActivity : AppCompatActivity() {
 
                     llSmsContainer.removeAllViews()
                     stats.todayList.forEach { event ->
-                        llSmsContainer.addView(createEventItemView(event.title, event.start, event.source))
+                        llSmsContainer.addView(createEventItemView(event))
                     }
                 }
             } catch (e: SessionExpiredException) {
@@ -149,21 +151,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun createEventItemView(title: String, start: String, source: String): View {
-        val container = LinearLayout(this).apply {
+    private fun createEventItemView(event: ApiService.TodayEvent): View {
+        val outer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 8, 0, 8)
         }
 
-        val sourceColor = when (source) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val sourceColor = when (event.source) {
             "sms", "rcs" -> 0xFF1565C0.toInt()
             "kakao" -> 0xFF6A1B9A.toInt()
             "gmail" -> 0xFF2E7D32.toInt()
             else -> 0xFF757575.toInt()
         }
 
+        val textColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+
         val titleView = TextView(this).apply {
-            text = "[${ source.uppercase()}] $title"
+            text = "[${event.source.uppercase()}] ${event.title}"
             textSize = 14f
             setTypeface(null, android.graphics.Typeface.BOLD)
             setTextColor(sourceColor)
@@ -172,14 +184,32 @@ class MainActivity : AppCompatActivity() {
         val dateStr = try {
             val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault())
             val outputFormat = SimpleDateFormat("MM/dd (E) HH:mm", Locale.KOREAN)
-            outputFormat.format(inputFormat.parse(start)!!)
-        } catch (e: Exception) { start }
+            outputFormat.format(inputFormat.parse(event.start)!!)
+        } catch (e: Exception) { event.start }
 
         val dateView = TextView(this).apply {
             text = dateStr
             textSize = 12f
             setTextColor(resources.getColor(android.R.color.darker_gray, theme))
         }
+
+        textColumn.addView(titleView)
+        textColumn.addView(dateView)
+
+        val deleteBtn = Button(this).apply {
+            text = "🗑"
+            textSize = 14f
+            minWidth = 0
+            minHeight = 0
+            minimumWidth = 0
+            minimumHeight = 0
+            setPadding(20, 8, 20, 8)
+            isEnabled = event.id.isNotEmpty()
+            setOnClickListener { confirmAndDelete(event) }
+        }
+
+        row.addView(textColumn)
+        row.addView(deleteBtn)
 
         val divider = View(this).apply {
             setBackgroundColor(resources.getColor(android.R.color.darker_gray, theme))
@@ -188,10 +218,39 @@ class MainActivity : AppCompatActivity() {
             ).also { it.topMargin = 8 }
         }
 
-        container.addView(titleView)
-        container.addView(dateView)
-        container.addView(divider)
-        return container
+        outer.addView(row)
+        outer.addView(divider)
+        return outer
+    }
+
+    private fun confirmAndDelete(event: ApiService.TodayEvent) {
+        AlertDialog.Builder(this)
+            .setTitle("일정 삭제")
+            .setMessage("Google 캘린더에서 영구 삭제됩니다.\n\n[${event.source.uppercase()}] ${event.title}\n\n삭제하시겠습니까?")
+            .setPositiveButton("삭제") { _, _ ->
+                lifecycleScope.launch {
+                    try {
+                        val ok = ApiService.deleteEvent(this@MainActivity, event.id)
+                        runOnUiThread {
+                            Toast.makeText(
+                                this@MainActivity,
+                                if (ok) "삭제되었습니다" else "삭제 실패",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                            loadStats()
+                        }
+                    } catch (e: SessionExpiredException) {
+                        runOnUiThread { goToLogin() }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        runOnUiThread {
+                            Toast.makeText(this@MainActivity, "오류: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("취소", null)
+            .show()
     }
 
     private fun goToLogin() {

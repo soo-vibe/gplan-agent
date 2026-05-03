@@ -42,7 +42,7 @@ object ApiService {
 
     data class SourceStats(val sms: Int, val kakao: Int, val gmail: Int, val total: Int)
 
-    data class TodayEvent(val title: String, val start: String, val source: String)
+    data class TodayEvent(val id: String, val title: String, val start: String, val source: String)
 
     data class StatsResult(
         val todayAdded: SourceStats,
@@ -72,6 +72,7 @@ object ApiService {
                 for (i in 0 until listArray.length()) {
                     val item = listArray.getJSONObject(i)
                     todayList.add(TodayEvent(
+                        id = item.optString("id"),
                         title = item.optString("title"),
                         start = item.optString("start"),
                         source = item.optString("source")
@@ -124,6 +125,17 @@ object ApiService {
                 name = json.optString("name"),
                 picture = json.optString("picture")
             )
+        }
+    }
+
+    suspend fun deleteEvent(ctx: Context, eventId: String): Boolean = withContext(Dispatchers.IO) {
+        val request = authedBuilder(ctx, "$BASE_URL/event/$eventId")
+            .delete()
+            .build()
+        client.newCall(request).execute().use { response ->
+            handleAuth(ctx, response)
+            val json = JSONObject(response.body!!.string())
+            json.optBoolean("success", false)
         }
     }
 

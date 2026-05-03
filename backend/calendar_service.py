@@ -35,3 +35,8 @@ def create_event(
         "end": created["end"]["dateTime"],
         "link": created.get("htmlLink", ""),
     }
+
+
+def delete_event(user: dict, event_id: str) -> None:
+    service = get_calendar_service(user)
+    service.events().delete(calendarId="primary", eventId=event_id).execute()
