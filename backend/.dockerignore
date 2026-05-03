@@ -5,6 +5,7 @@ __pycache__/
 .env.example
 token.json
 credentials.json
+credentials_web.json
 deploy.sh
 .gcloudignore
 .dockerignore

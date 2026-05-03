@@ -7,12 +7,47 @@ attaches the user document to flask.g.user.
 require_scheduler: separate path for Cloud Scheduler that uses a shared secret
 header (X-Scheduler-Secret) instead of per-user tokens.
 """
+import hmac
 import os
+import time
 from functools import wraps
 
 from flask import g, jsonify, request
 
 import firestore_repo
+
+# In-process LRU for token → user lookups. Every authenticated request would
+# otherwise run a Firestore where-equality query just to resolve identity.
+# 60s TTL is short enough that a token revocation (logout / disable_user) is
+# noticed quickly. Cache is per-instance, so revocation across instances is
+# eventually consistent.
+_TOKEN_CACHE_TTL = 60.0
+_TOKEN_CACHE_MAX = 256
+_token_cache: dict[str, tuple[float, dict]] = {}
+
+
+def _token_cache_get(token: str) -> dict | None:
+    entry = _token_cache.get(token)
+    if entry is None:
+        return None
+    expires_at, user = entry
+    if time.monotonic() >= expires_at:
+        _token_cache.pop(token, None)
+        return None
+    return user
+
+
+def _token_cache_put(token: str, user: dict) -> None:
+    if len(_token_cache) >= _TOKEN_CACHE_MAX:
+        # Evict oldest entry. This is O(n) but only fires at the cap and the
+        # cache is tiny.
+        oldest = min(_token_cache.items(), key=lambda kv: kv[1][0])[0]
+        _token_cache.pop(oldest, None)
+    _token_cache[token] = (time.monotonic() + _TOKEN_CACHE_TTL, user)
+
+
+def _token_cache_invalidate(token: str) -> None:
+    _token_cache.pop(token, None)
 
 
 def _extract_bearer_token() -> str | None:
@@ -22,14 +57,30 @@ def _extract_bearer_token() -> str | None:
     return None
 
 
+def _check_header_secret(header_name: str, env_name: str) -> tuple[bool, tuple | None]:
+    expected = os.environ.get(env_name)
+    if not expected:
+        return False, (jsonify({"error": "server misconfigured"}), 500)
+    provided = request.headers.get(header_name, "")
+    if not hmac.compare_digest(provided, expected):
+        return False, (jsonify({"error": "unauthorized"}), 401)
+    return True, None
+
+
 def require_auth(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         token = _extract_bearer_token()
         if not token:
             return jsonify({"error": "unauthorized"}), 401
-        user = firestore_repo.get_user_by_api_token(token)
-        if not user or user.get("disabled"):
+        user = _token_cache_get(token)
+        if user is None:
+            user = firestore_repo.get_user_by_api_token(token)
+            if not user or user.get("disabled"):
+                return jsonify({"error": "unauthorized"}), 401
+            _token_cache_put(token, user)
+        elif user.get("disabled"):
+            _token_cache_invalidate(token)
             return jsonify({"error": "unauthorized"}), 401
         g.user = user
         return fn(*args, **kwargs)
@@ -39,10 +90,20 @@ def require_auth(fn):
 def require_scheduler(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        expected = os.environ.get("SCHEDULER_SECRET")
-        if not expected:
-            return jsonify({"error": "server misconfigured: SCHEDULER_SECRET unset"}), 500
-        if request.headers.get("X-Scheduler-Secret") != expected:
-            return jsonify({"error": "unauthorized"}), 401
+        ok, err = _check_header_secret("X-Scheduler-Secret", "SCHEDULER_SECRET")
+        if not ok:
+            return err
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def require_admin(fn):
+    """Separate from scheduler: admin endpoints (`/admin/*`) use ADMIN_SECRET so
+    rotation/leakage of the cron secret never grants PII access."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        ok, err = _check_header_secret("X-Admin-Secret", "ADMIN_SECRET")
+        if not ok:
+            return err
         return fn(*args, **kwargs)
     return wrapper

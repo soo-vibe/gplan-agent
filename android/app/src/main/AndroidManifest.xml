@@ -22,8 +22,8 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="GPlan Agent"
-        android:theme="@style/Theme.MaterialComponents.DayNight.DarkActionBar"
-        android:usesCleartextTraffic="true">
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:theme="@style/Theme.MaterialComponents.DayNight.DarkActionBar">
 
         <activity
             android:name=".auth.LoginActivity"
@@ -53,11 +53,12 @@
             android:name=".MainActivity"
             android:exported="false" />
 
-        <!-- SMS 자동 감지 -->
+        <!-- SMS 자동 감지: BROADCAST_SMS 권한 보호 (시스템만 발신 가능) -->
         <receiver
             android:name=".SmsReceiver"
-            android:exported="true">
-            <intent-filter android:priority="999">
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
             </intent-filter>
         </receiver>

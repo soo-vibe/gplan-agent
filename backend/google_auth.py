@@ -5,7 +5,7 @@ Credentials live inside each user's Firestore document. On each API call we
 materialize a Credentials object, refresh it if expired, and write the new
 access token back so concurrent requests don't all refresh independently.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
@@ -13,6 +13,11 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
 import firestore_repo
+
+# Refresh proactively when expiry is within this grace window. Avoids two
+# concurrent requests both seeing creds.expired=True and refreshing in parallel
+# (the second would clobber the first's update if refresh tokens rotated).
+_REFRESH_GRACE = timedelta(seconds=30)
 
 SCOPES = [
     "https://www.googleapis.com/auth/calendar",
@@ -60,10 +65,21 @@ def _credentials_from_dict(data: dict) -> Credentials:
     return creds
 
 
+def _needs_refresh(creds: Credentials) -> bool:
+    if not creds.refresh_token:
+        return False
+    if creds.expired:
+        return True
+    if creds.expiry is None:
+        return False
+    # creds.expiry is a naive UTC datetime per google-auth convention.
+    return datetime.utcnow() + _REFRESH_GRACE >= creds.expiry
+
+
 def load_credentials_for_user(user: dict) -> Credentials:
     creds_dict = user.get("google_credentials") or {}
     creds = _credentials_from_dict(creds_dict)
-    if creds.expired and creds.refresh_token:
+    if _needs_refresh(creds):
         try:
             creds.refresh(Request())
         except RefreshError as e:

@@ -2,6 +2,7 @@ package com.example.gplanagent
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 
 /**
  * Reads RCS (Rich Communication Services) messages from the device's telephony
@@ -55,10 +56,12 @@ object RcsHelper {
         } catch (e: IllegalArgumentException) {
             // URI doesn't exist on this device (non-Samsung, no RCS support)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.w(TAG, "RCS query failed: ${e.javaClass.simpleName}")
         }
         return out
     }
+
+    private const val TAG = "GPlanAgent"
 
     /** Marks the highest seen id so subsequent queries skip already-processed rows. */
     fun updateLastSeenId(ctx: Context, id: Long) {

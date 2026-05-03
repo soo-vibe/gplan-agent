@@ -2,6 +2,7 @@ package com.example.gplanagent
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
@@ -29,6 +30,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvTodayGmail: TextView
     private lateinit var llSmsContainer: LinearLayout
     private lateinit var tvPermissionWarning: TextView
+
+    // Throttle /stats refreshes to once per second when many events arrive in
+    // a burst (e.g., processing several queued SMS in quick succession).
+    private var lastStatsLoadAt = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,7 +72,11 @@ class MainActivity : AppCompatActivity() {
                     if (message.startsWith(ScheduleEventBus.SESSION_EXPIRED_PREFIX)) {
                         goToLogin()
                     } else {
-                        loadStats()
+                        val now = System.currentTimeMillis()
+                        if (now - lastStatsLoadAt > 1000) {
+                            lastStatsLoadAt = now
+                            loadStats()
+                        }
                     }
                 }
             }
@@ -146,7 +155,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: NotLoggedInException) {
                 runOnUiThread { goToLogin() }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.w(TAG, "loadStats failed: ${e.javaClass.simpleName}")
             }
         }
     }
@@ -242,9 +251,9 @@ class MainActivity : AppCompatActivity() {
                     } catch (e: SessionExpiredException) {
                         runOnUiThread { goToLogin() }
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        Log.w(TAG, "deleteEvent failed: ${e.javaClass.simpleName}")
                         runOnUiThread {
-                            Toast.makeText(this@MainActivity, "오류: ${e.message}", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@MainActivity, "삭제 중 오류가 발생했습니다", Toast.LENGTH_LONG).show()
                         }
                     }
                 }
@@ -259,6 +268,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val TAG = "GPlanAgent"
         private const val MENU_PERMISSIONS = 1
         private const val MENU_LOGOUT = 2
     }

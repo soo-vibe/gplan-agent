@@ -1,6 +1,7 @@
 package com.example.gplanagent
 
 import android.content.Context
+import android.util.Log
 import com.example.gplanagent.auth.AuthManager
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -42,7 +43,7 @@ object RcsSync {
                 } catch (e: NotLoggedInException) {
                     return@withLock
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    Log.w(TAG, "RCS parseAndSave failed: ${e.javaClass.simpleName}")
                 }
                 if (msg.id > maxId) maxId = msg.id
             }
@@ -50,4 +51,6 @@ object RcsSync {
             if (savedAny) ScheduleEventBus.notify("RCS 일정 등록됨")
         }
     }
+
+    private const val TAG = "GPlanAgent"
 }

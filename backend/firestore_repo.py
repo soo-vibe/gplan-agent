@@ -16,10 +16,18 @@ from google.cloud import firestore
 
 USERS_COLLECTION = "users"
 PENDING_USERS_COLLECTION = "pending_users"
+USER_EVENTS_COLLECTION = "user_events"  # ownership records: doc id = "{user_id}_{event_id}"
+DEDUP_COLLECTION = "processed_messages"  # idempotency: doc id = "{user_id}_{source}_{key_hash}"
+
+PENDING_REQUEST_THROTTLE_SECONDS = 60
 
 
 def _hash_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+
+def _hash_key(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:32]
 
 
 def _user_id_from_sub(sub: str) -> str:
@@ -152,8 +160,10 @@ def iter_active_users() -> Iterator[dict]:
 
 def add_pending_user(email: str, name: str = "") -> dict:
     """Records an access request from someone not yet in OAuth Test Users.
-    Returns {"created": bool, "doc": {...}}. Email used as the doc id (lowercased)
-    so duplicate requests upsert without piling up rows.
+    Returns {"created": bool, "throttled": bool, "doc": {...}}.
+
+    Throttle: rejects re-requests from the same email within the last
+    PENDING_REQUEST_THROTTLE_SECONDS to limit anonymous spam.
     """
     if not email:
         raise ValueError("email required")
@@ -164,11 +174,16 @@ def add_pending_user(email: str, name: str = "") -> dict:
 
     if snap.exists:
         existing = snap.to_dict() or {}
+        last = existing.get("last_requested_at")
+        if isinstance(last, datetime):
+            elapsed = (now - last).total_seconds() if last.tzinfo else float("inf")
+            if elapsed < PENDING_REQUEST_THROTTLE_SECONDS:
+                return {"created": False, "throttled": True, "doc": {**existing, "id": email_lc}}
         doc_ref.update({
             "last_requested_at": now,
             "request_count": (existing.get("request_count", 0) + 1),
         })
-        return {"created": False, "doc": {**existing, "id": email_lc, "last_requested_at": now}}
+        return {"created": False, "throttled": False, "doc": {**existing, "id": email_lc, "last_requested_at": now}}
 
     payload = {
         "email": email_lc,
@@ -179,7 +194,7 @@ def add_pending_user(email: str, name: str = "") -> dict:
         "request_count": 1,
     }
     doc_ref.set(payload)
-    return {"created": True, "doc": {**payload, "id": email_lc}}
+    return {"created": True, "throttled": False, "doc": {**payload, "id": email_lc}}
 
 
 def list_pending_users() -> list[dict]:
@@ -210,9 +225,10 @@ def mark_pending_added(email: str) -> bool:
     return True
 
 
-def list_users_summary() -> list[dict]:
+def list_users_summary(limit: int = 200) -> list[dict]:
     out = []
-    for snap in _get_client().collection(USERS_COLLECTION).stream():
+    query = _get_client().collection(USERS_COLLECTION).limit(limit).stream()
+    for snap in query:
         d = snap.to_dict() or {}
         out.append({
             "user_id": snap.id,
@@ -222,3 +238,49 @@ def list_users_summary() -> list[dict]:
             "disabled": d.get("disabled", False),
         })
     return out
+
+
+# --- Idempotency: skip re-processing the same message twice ---
+
+def find_dedup_event(user_id: str, source: str, key: str) -> dict | None:
+    """Returns the processed-messages doc if (user, source, key) was already
+    processed (regardless of whether a schedule was found). Caller skips
+    re-parsing on hit."""
+    doc_id = f"{user_id}_{source}_{_hash_key(key)}"
+    snap = _get_client().collection(DEDUP_COLLECTION).document(doc_id).get()
+    return _doc_with_id(snap)
+
+
+def record_processed(user_id: str, source: str, key: str, event_id: str | None) -> None:
+    """Marks (user, source, key) as processed. event_id is the created Calendar
+    event id (or None if has_schedule=False)."""
+    doc_id = f"{user_id}_{source}_{_hash_key(key)}"
+    _get_client().collection(DEDUP_COLLECTION).document(doc_id).set({
+        "user_id": user_id,
+        "source": source,
+        "event_id": event_id or "",
+        "has_schedule": event_id is not None,
+        "processed_at": datetime.now(timezone.utc),
+    })
+
+
+# --- Ownership: only allow deletion of events the agent created ---
+
+def record_event_ownership(user_id: str, event_id: str, source: str) -> None:
+    doc_id = f"{user_id}_{event_id}"
+    _get_client().collection(USER_EVENTS_COLLECTION).document(doc_id).set({
+        "user_id": user_id,
+        "event_id": event_id,
+        "source": source,
+        "created_at": datetime.now(timezone.utc),
+    })
+
+
+def is_event_owned(user_id: str, event_id: str) -> bool:
+    doc_id = f"{user_id}_{event_id}"
+    return _get_client().collection(USER_EVENTS_COLLECTION).document(doc_id).get().exists
+
+
+def forget_event_ownership(user_id: str, event_id: str) -> None:
+    doc_id = f"{user_id}_{event_id}"
+    _get_client().collection(USER_EVENTS_COLLECTION).document(doc_id).delete()

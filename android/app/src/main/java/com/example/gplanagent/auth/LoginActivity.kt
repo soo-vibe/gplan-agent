@@ -3,6 +3,7 @@ package com.example.gplanagent.auth
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -26,7 +27,11 @@ class LoginActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnSignIn).setOnClickListener {
             tvStatus.text = "브라우저로 이동 중..."
+            val nonce = AuthManager.beginPendingLogin(this)
             val url = Uri.parse("${BuildConfig.BASE_URL}/oauth/login")
+                .buildUpon()
+                .appendQueryParameter("nonce", nonce)
+                .build()
             CustomTabsIntent.Builder().build().launchUrl(this, url)
         }
 
@@ -51,6 +56,16 @@ class LoginActivity : AppCompatActivity() {
         val data = intent?.data ?: return
         if (data.scheme != "gplanagent" || data.host != "login") return
 
+        val expectedNonce = AuthManager.consumePendingNonce(this)
+        val gotNonce = data.getQueryParameter("nonce") ?: ""
+        if (expectedNonce.isNullOrEmpty() || expectedNonce != gotNonce) {
+            // No pending login or nonce mismatch — likely a forged deep link
+            // from another app. Refuse to accept any token in this intent.
+            Log.w(TAG, "Rejecting deep link: nonce mismatch")
+            tvStatus.text = "로그인 실패: 잘못된 응답"
+            return
+        }
+
         val err = data.getQueryParameter("error")
         if (err != null) {
             tvStatus.text = "로그인 실패: $err"
@@ -74,5 +89,9 @@ class LoginActivity : AppCompatActivity() {
         }
         startActivity(Intent(this, target))
         finish()
+    }
+
+    companion object {
+        private const val TAG = "GPlanAgent"
     }
 }

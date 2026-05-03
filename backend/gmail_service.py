@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import base64
 
+from googleapiclient.errors import HttpError
+
 import firestore_repo
 from google_auth import get_service_for_user
 
@@ -11,29 +13,46 @@ def get_gmail_service(user: dict):
     return get_service_for_user(user, "gmail", "v1")
 
 
+def _find_label_id(service, name: str) -> str | None:
+    existing = service.users().labels().list(userId="me").execute().get("labels", [])
+    for label in existing:
+        if label["name"] == name:
+            return label["id"]
+    return None
+
+
 def _ensure_label_id(user: dict, service) -> str:
     cached = user.get("gmail_label_id")
     if cached:
         return cached
 
-    existing = service.users().labels().list(userId="me").execute().get("labels", [])
-    for label in existing:
-        if label["name"] == PROCESSED_LABEL:
-            firestore_repo.set_gmail_label_id(user["id"], label["id"])
-            user["gmail_label_id"] = label["id"]
-            return label["id"]
+    found = _find_label_id(service, PROCESSED_LABEL)
+    if found:
+        firestore_repo.set_gmail_label_id(user["id"], found)
+        user["gmail_label_id"] = found
+        return found
 
-    created = service.users().labels().create(
-        userId="me",
-        body={
-            "name": PROCESSED_LABEL,
-            "labelListVisibility": "labelShow",
-            "messageListVisibility": "show",
-        },
-    ).execute()
-    firestore_repo.set_gmail_label_id(user["id"], created["id"])
-    user["gmail_label_id"] = created["id"]
-    return created["id"]
+    try:
+        created = service.users().labels().create(
+            userId="me",
+            body={
+                "name": PROCESSED_LABEL,
+                "labelListVisibility": "labelShow",
+                "messageListVisibility": "show",
+            },
+        ).execute()
+        label_id = created["id"]
+    except HttpError as e:
+        # 409: another concurrent request created the label first.
+        if e.resp.status != 409:
+            raise
+        label_id = _find_label_id(service, PROCESSED_LABEL)
+        if not label_id:
+            raise
+
+    firestore_repo.set_gmail_label_id(user["id"], label_id)
+    user["gmail_label_id"] = label_id
+    return label_id
 
 
 def _extract_body(payload) -> str:

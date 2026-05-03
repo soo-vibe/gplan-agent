@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Log
 import com.example.gplanagent.auth.AuthManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,7 +43,7 @@ class KakaoNotificationService : NotificationListenerService() {
                 rcsObserver,
             )
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.w(TAG, "RCS observer register failed: ${e.javaClass.simpleName}")
         }
     }
 
@@ -96,8 +97,12 @@ class KakaoNotificationService : NotificationListenerService() {
             } catch (e: NotLoggedInException) {
                 // ignore
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.w(TAG, "parseAndSave failed: ${e.javaClass.simpleName}")
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "GPlanAgent"
     }
 }

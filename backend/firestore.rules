@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// All Firestore writes/reads in this project go through the Cloud Run backend
+// using the runtime service account (Datastore-level credentials, which bypass
+// security rules). These rules deny *all* client-SDK access — they exist as
+// defense-in-depth so an exposed Firebase config cannot be turned into a data
+// exfiltration channel.
+//
+// Deploy with:
+//   gcloud firestore --project=$PROJECT databases update --rules-file=firestore.rules
+// or via the Firebase CLI if Firebase tooling is set up:
+//   firebase deploy --only firestore:rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

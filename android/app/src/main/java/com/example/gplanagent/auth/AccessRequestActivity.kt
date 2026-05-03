@@ -3,6 +3,7 @@ package com.example.gplanagent.auth
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.util.Patterns
 import android.view.View
 import android.widget.EditText
@@ -51,9 +52,9 @@ class AccessRequestActivity : AppCompatActivity() {
                         Toast.makeText(this@AccessRequestActivity, "요청 접수됨", Toast.LENGTH_LONG).show()
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    Log.w("GPlanAgent", "access-request failed: ${e.javaClass.simpleName}")
                     runOnUiThread {
-                        statusView.text = "오류: ${e.message ?: "전송 실패"}"
+                        statusView.text = "전송 실패. 잠시 후 다시 시도해주세요."
                         submitBtn.isEnabled = true
                     }
                 }

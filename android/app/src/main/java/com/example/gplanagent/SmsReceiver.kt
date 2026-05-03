@@ -4,14 +4,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
+import android.util.Log
 import com.example.gplanagent.auth.AuthManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class SmsReceiver : BroadcastReceiver() {
-
-    private val scope = CoroutineScope(Dispatchers.IO)
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
@@ -23,14 +23,19 @@ class SmsReceiver : BroadcastReceiver() {
 
         if (fullText.isBlank()) return
 
-        val contact = ContactLookup.lookupByPhone(context, originatingAddress)
-        val senderName = contact.name.ifBlank { originatingAddress }
-        val senderOrg = contact.organization
-
+        // goAsync keeps the receiver alive past onReceive return so the coroutine
+        // can finish; without it the process can die mid-IO. applicationContext
+        // avoids holding the BroadcastReceiver-scoped Context.
+        val pendingResult = goAsync()
+        val appCtx = context.applicationContext
+        val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         scope.launch {
             try {
+                val contact = ContactLookup.lookupByPhone(appCtx, originatingAddress)
+                val senderName = contact.name.ifBlank { originatingAddress }
+                val senderOrg = contact.organization
                 val result = ApiService.parseAndSave(
-                    context, fullText,
+                    appCtx, fullText,
                     source = "sms",
                     sender = senderName,
                     senderOrg = senderOrg,
@@ -43,8 +48,14 @@ class SmsReceiver : BroadcastReceiver() {
             } catch (e: NotLoggedInException) {
                 // user logged out between check and call; ignore
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.w(TAG, "SMS parseAndSave failed: ${e.javaClass.simpleName}")
+            } finally {
+                pendingResult.finish()
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "GPlanAgent"
     }
 }
