@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cloud Run deployment for the multi-user CalendarAgent backend.
+# Cloud Run deployment for the multi-user GPlan Agent backend.
 #
 # ----------------------------------------------------------------------------
 # ONE-TIME SETUP (do this manually before the first deploy)

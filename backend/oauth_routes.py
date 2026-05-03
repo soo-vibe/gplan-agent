@@ -7,7 +7,7 @@ Flow:
   3. Google redirects back to GET /oauth/callback with code+state.
   4. Backend verifies state, exchanges code, decodes id_token for user identity,
      upserts the user (rotating the api_token), and 302-redirects to the
-     deep link calendaragent://login?token=...&email=...
+     deep link gplanagent://login?token=...&email=...
   5. The Android LoginActivity intercepts that deep link and stores the token.
 """
 import json
