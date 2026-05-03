@@ -39,8 +39,20 @@ def _split_email_from(raw_from: str) -> tuple[str, str]:
     return name, domain
 
 
+def _build_title(base_title: str, sender: str, sender_org: str) -> str:
+    if not sender:
+        return base_title
+    if sender_org:
+        return f"{base_title} — {sender} ({sender_org})"
+    return f"{base_title} — {sender}"
+
+
 def _build_description(parsed: dict, source: str, sender: str, sender_org: str) -> str:
     header_lines = []
+
+    location = parsed.get("location", "").strip()
+    if location:
+        header_lines.append(f"장소: {location}")
     if sender:
         if sender_org:
             header_lines.append(f"보낸이: {sender} ({sender_org})")
@@ -62,7 +74,7 @@ def _save_event(user: dict, parsed: dict, source: str, sender: str = "", sender_
     end_iso = build_iso_datetime(parsed["date"], _resolve_end_time(parsed))
     return create_event(
         user,
-        title=parsed["title"],
+        title=_build_title(parsed["title"], sender, sender_org),
         start_time=start_iso,
         end_time=end_iso,
         description=_build_description(parsed, source, sender, sender_org),
