@@ -86,8 +86,19 @@ object ApiService {
         }
     }
 
-    suspend fun parseAndSave(ctx: Context, message: String, source: String = ""): SaveResult = withContext(Dispatchers.IO) {
-        val body = JSONObject().put("message", message).put("source", source).toString()
+    suspend fun parseAndSave(
+        ctx: Context,
+        message: String,
+        source: String = "",
+        sender: String = "",
+        senderOrg: String = "",
+    ): SaveResult = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("message", message)
+            .put("source", source)
+            .put("sender", sender)
+            .put("sender_org", senderOrg)
+            .toString()
             .toRequestBody(JSON)
         val request = authedBuilder(ctx, "$BASE_URL/parse-and-save")
             .post(body)

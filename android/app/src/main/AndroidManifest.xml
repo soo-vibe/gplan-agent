@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
 
+    <!-- 연락처 권한 (선택사항: SMS 발신자 이름/소속 자동 조회) -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
     <!-- 네트워크 권한 (백엔드 통신) -->
     <uses-permission android:name="android.permission.INTERNET" />
 

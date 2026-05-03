@@ -19,6 +19,9 @@ object PermissionStatus {
         ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
         ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
 
+    fun contactsGranted(ctx: Context): Boolean =
+        ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+
     fun notificationListenerGranted(ctx: Context): Boolean {
         val flat = Settings.Secure.getString(ctx.contentResolver, "enabled_notification_listeners") ?: return false
         return flat.split(":").any { it.startsWith("${ctx.packageName}/") }

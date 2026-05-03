@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), override=True)
 
 import firestore_repo
+from email.utils import parseaddr
+
 from parser import parse_schedule, build_iso_datetime
 from calendar_service import create_event, get_calendar_service
 from gmail_service import get_unprocessed_emails, mark_processed
@@ -25,7 +27,37 @@ def _resolve_end_time(parsed: dict) -> str:
     return f"{str(int(h) + 1).zfill(2)}:{m}"
 
 
-def _save_event(user: dict, parsed: dict, source: str) -> dict:
+SOURCE_LABELS = {"sms": "SMS", "kakao": "KakaoTalk", "gmail": "Gmail"}
+
+
+def _split_email_from(raw_from: str) -> tuple[str, str]:
+    """Parse 'Name <email@domain>' into (name, domain). Both fields are best-effort."""
+    name, addr = parseaddr(raw_from or "")
+    domain = addr.rsplit("@", 1)[-1] if "@" in addr else ""
+    if not name:
+        name = addr.split("@", 1)[0] if "@" in addr else addr
+    return name, domain
+
+
+def _build_description(parsed: dict, source: str, sender: str, sender_org: str) -> str:
+    header_lines = []
+    if sender:
+        if sender_org:
+            header_lines.append(f"보낸이: {sender} ({sender_org})")
+        else:
+            header_lines.append(f"보낸이: {sender}")
+    if source:
+        header_lines.append(f"출처: {SOURCE_LABELS.get(source, source)}")
+
+    body = parsed.get("description", "").strip()
+    if header_lines and body:
+        return "\n".join(header_lines) + "\n\n" + body
+    if header_lines:
+        return "\n".join(header_lines)
+    return body
+
+
+def _save_event(user: dict, parsed: dict, source: str, sender: str = "", sender_org: str = "") -> dict:
     start_iso = build_iso_datetime(parsed["date"], parsed["start_time"])
     end_iso = build_iso_datetime(parsed["date"], _resolve_end_time(parsed))
     return create_event(
@@ -33,7 +65,7 @@ def _save_event(user: dict, parsed: dict, source: str) -> dict:
         title=parsed["title"],
         start_time=start_iso,
         end_time=end_iso,
-        description=parsed.get("description", ""),
+        description=_build_description(parsed, source, sender, sender_org),
         location=parsed.get("location", ""),
         source=source,
     )
@@ -85,12 +117,14 @@ def parse_and_save():
 
     message = data["message"].strip()
     source = data.get("source", "")
+    sender = data.get("sender", "").strip()
+    sender_org = data.get("sender_org", "").strip()
 
     parsed = parse_schedule(message)
     if not parsed.get("has_schedule"):
         return jsonify({"success": False, "message": "No schedule found", "parsed": parsed})
 
-    event = _save_event(g.user, parsed, source)
+    event = _save_event(g.user, parsed, source, sender=sender, sender_org=sender_org)
     return jsonify({
         "success": True,
         "message": "Schedule saved to Google Calendar",
@@ -107,10 +141,11 @@ def gmail_check():
         saved = []
         for email in emails:
             text = f"{email['subject']} {email['body']}"
+            sender_name, sender_domain = _split_email_from(email.get("sender", ""))
             parsed = parse_schedule(text)
             try:
                 if parsed.get("has_schedule"):
-                    saved.append(_save_event(g.user, parsed, "gmail"))
+                    saved.append(_save_event(g.user, parsed, "gmail", sender=sender_name, sender_org=sender_domain))
             finally:
                 mark_processed(g.user, email["id"])
         return jsonify({"success": True, "checked": len(emails), "saved": len(saved), "events": saved})
@@ -128,10 +163,11 @@ def gmail_check_all():
             emails = get_unprocessed_emails(user, within_days=1)
             for email in emails:
                 text = f"{email['subject']} {email['body']}"
+                sender_name, sender_domain = _split_email_from(email.get("sender", ""))
                 parsed = parse_schedule(text)
                 try:
                     if parsed.get("has_schedule"):
-                        _save_event(user, parsed, "gmail")
+                        _save_event(user, parsed, "gmail", sender=sender_name, sender_org=sender_domain)
                         summary["saved"] += 1
                 finally:
                     mark_processed(user, email["id"])

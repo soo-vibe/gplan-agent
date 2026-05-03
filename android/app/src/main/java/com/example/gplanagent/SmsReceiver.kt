@@ -19,12 +19,22 @@ class SmsReceiver : BroadcastReceiver() {
 
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
         val fullText = messages.joinToString(" ") { it.messageBody }
+        val originatingAddress = messages.firstOrNull()?.originatingAddress.orEmpty()
 
         if (fullText.isBlank()) return
 
+        val contact = ContactLookup.lookupByPhone(context, originatingAddress)
+        val senderName = contact.name.ifBlank { originatingAddress }
+        val senderOrg = contact.organization
+
         scope.launch {
             try {
-                val result = ApiService.parseAndSave(context, fullText, source = "sms")
+                val result = ApiService.parseAndSave(
+                    context, fullText,
+                    source = "sms",
+                    sender = senderName,
+                    senderOrg = senderOrg,
+                )
                 if (result.success) {
                     ScheduleEventBus.notify(result.message)
                 }

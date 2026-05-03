@@ -17,12 +17,24 @@ class KakaoNotificationService : NotificationListenerService() {
 
         val extras = sbn.notification.extras
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
+        val title = extras.getCharSequence("android.title")?.toString().orEmpty()
+        val subText = extras.getCharSequence("android.subText")?.toString().orEmpty()
 
         if (text.isBlank()) return
 
+        // 1:1 채팅: title = 발신자 닉네임, subText 비어있음
+        // 그룹 채팅: title = 발신자 닉네임, subText = 방 이름 (대개)
+        val sender = title
+        val senderOrg = subText
+
         scope.launch {
             try {
-                val result = ApiService.parseAndSave(this@KakaoNotificationService, text, source = "kakao")
+                val result = ApiService.parseAndSave(
+                    this@KakaoNotificationService, text,
+                    source = "kakao",
+                    sender = sender,
+                    senderOrg = senderOrg,
+                )
                 if (result.success) {
                     ScheduleEventBus.notify(result.message)
                 }

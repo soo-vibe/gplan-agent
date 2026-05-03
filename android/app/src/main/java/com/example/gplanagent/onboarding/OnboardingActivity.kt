@@ -31,6 +31,7 @@ class OnboardingActivity : AppCompatActivity() {
         val actionLabel: String,
         val granted: () -> Boolean,
         val onAction: () -> Unit,
+        val optional: Boolean = false,
     )
 
     private lateinit var cards: List<Card>
@@ -71,6 +72,17 @@ class OnboardingActivity : AppCompatActivity() {
                 granted = { PermissionStatus.batteryUnrestricted(this) },
                 onAction = { requestBatteryException() }
             ),
+            Card(
+                statusId = R.id.tvContactsStatus,
+                actionId = R.id.btnContactsAction,
+                accent = 0xFF2E7D32.toInt(),
+                actionLabel = "권한 요청",
+                granted = { PermissionStatus.contactsGranted(this) },
+                onAction = {
+                    smsPermissionLauncher.launch(arrayOf(Manifest.permission.READ_CONTACTS))
+                },
+                optional = true,
+            ),
         )
 
         cards.forEach { card ->
@@ -99,15 +111,19 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun refreshAll() {
-        val grantedCount = cards.count { renderCard(it) }
+        val results = cards.map { renderCard(it) to it.optional }
+        val requiredCards = results.filter { !it.second }
+        val requiredGranted = requiredCards.count { it.first }
+        val requiredTotal = requiredCards.size
 
-        findViewById<TextView>(R.id.tvProgress).text = "$grantedCount / ${cards.size} 허용됨"
-        findViewById<LinearProgressIndicator>(R.id.progressIndicator).setProgress(grantedCount, true)
+        findViewById<TextView>(R.id.tvProgress).text = "$requiredGranted / $requiredTotal 허용됨"
+        findViewById<LinearProgressIndicator>(R.id.progressIndicator).max = requiredTotal
+        findViewById<LinearProgressIndicator>(R.id.progressIndicator).setProgress(requiredGranted, true)
 
-        val all = grantedCount == cards.size
+        val allRequired = requiredGranted == requiredTotal
         val continueBtn = findViewById<MaterialButton>(R.id.btnContinue)
-        continueBtn.isEnabled = all
-        continueBtn.text = if (all) "✓  시작하기" else "권한을 모두 허용해주세요"
+        continueBtn.isEnabled = allRequired
+        continueBtn.text = if (allRequired) "✓  시작하기" else "필수 권한을 모두 허용해주세요"
     }
 
     /** Returns true if granted. */
