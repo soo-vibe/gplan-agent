@@ -14,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.gplanagent.auth.AuthManager
 import com.example.gplanagent.auth.LoginActivity
 import com.example.gplanagent.onboarding.OnboardingActivity
+import com.example.gplanagent.onboarding.PermissionStatus
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -25,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvTodayKakao: TextView
     private lateinit var tvTodayGmail: TextView
     private lateinit var llSmsContainer: LinearLayout
+    private lateinit var tvPermissionWarning: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,8 +45,17 @@ class MainActivity : AppCompatActivity() {
         tvTodayKakao = findViewById(R.id.tvTodayKakao)
         tvTodayGmail = findViewById(R.id.tvTodayGmail)
         llSmsContainer = findViewById(R.id.llSmsContainer)
+        tvPermissionWarning = findViewById(R.id.tvPermissionWarning)
+
+        tvPermissionWarning.setOnClickListener {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+        }
 
         loadStats()
+
+        // RCS 폴링 — 백그라운드 15분 주기 + 한 번 캐치업
+        RcsHelper.primeLastSeenIdIfUnset(this)
+        RcsSyncWorker.schedulePeriodic(applicationContext)
 
         lifecycleScope.launch {
             ScheduleEventBus.events.collect { message ->
@@ -60,6 +71,50 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshPermissionBanner()
+        // 앱이 포그라운드로 올 때마다 RCS 캐치업
+        lifecycleScope.launch {
+            try {
+                val ctx = this@MainActivity.applicationContext
+                val msgs = RcsHelper.queryNewMessages(ctx)
+                var maxId = 0L
+                for (m in msgs) {
+                    try {
+                        val contact = ContactLookup.lookupByPhone(ctx, m.address)
+                        ApiService.parseAndSave(
+                            ctx, m.body,
+                            source = "rcs",
+                            sender = contact.name.ifBlank { m.address },
+                            senderOrg = contact.organization,
+                        )
+                    } catch (e: Exception) { e.printStackTrace() }
+                    if (m.id > maxId) maxId = m.id
+                }
+                if (maxId > 0) {
+                    RcsHelper.updateLastSeenId(ctx, maxId)
+                    runOnUiThread { loadStats() }
+                }
+            } catch (e: Exception) { e.printStackTrace() }
+        }
+    }
+
+    private fun refreshPermissionBanner() {
+        if (!::tvPermissionWarning.isInitialized) return
+        val missing = mutableListOf<String>()
+        if (!PermissionStatus.smsGranted(this)) missing += "SMS"
+        if (!PermissionStatus.notificationListenerGranted(this)) missing += "카톡 알림"
+        if (!PermissionStatus.batteryUnrestricted(this)) missing += "배터리"
+
+        if (missing.isEmpty()) {
+            tvPermissionWarning.visibility = View.GONE
+        } else {
+            tvPermissionWarning.text = "⚠  ${missing.joinToString(" · ")} 권한 누락 — 탭해서 설정하기"
+            tvPermissionWarning.visibility = View.VISIBLE
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -122,7 +177,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val sourceColor = when (source) {
-            "sms" -> 0xFF1565C0.toInt()
+            "sms", "rcs" -> 0xFF1565C0.toInt()
             "kakao" -> 0xFF6A1B9A.toInt()
             "gmail" -> 0xFF2E7D32.toInt()
             else -> 0xFF757575.toInt()
