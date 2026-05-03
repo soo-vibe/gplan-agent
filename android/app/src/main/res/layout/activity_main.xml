@@ -6,6 +6,19 @@
     android:padding="16dp">
 
     <TextView
+        android:id="@+id/tvPermissionWarning"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:background="#FFF3E0"
+        android:padding="12dp"
+        android:layout_marginBottom="10dp"
+        android:textColor="#E65100"
+        android:textSize="13sp"
+        android:drawablePadding="8dp"
+        android:text="⚠  권한 누락 — 일부 기능 동작 안 함\n탭해서 권한 설정으로 이동" />
+
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="오늘 새로 등록된 일정"
