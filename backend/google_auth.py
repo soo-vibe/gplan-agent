@@ -7,6 +7,7 @@ access token back so concurrent requests don't all refresh independently.
 """
 from datetime import datetime, timedelta, timezone
 
+from flask import g, has_app_context
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -90,4 +91,18 @@ def load_credentials_for_user(user: dict) -> Credentials:
 
 
 def get_service_for_user(user: dict, api_name: str, version: str):
+    """Returns a Google API client, cached for the lifetime of the current
+    request. Without the cache, each `_save_event` and `mark_processed`
+    re-parses the discovery JSON; in /gmail/check-all that's ~2× per email
+    per user. The cache is request-scoped via flask.g so cross-request
+    credential rotation is still picked up on the next request."""
+    cache_key = (user.get("id", ""), api_name, version)
+    if has_app_context():
+        cache = g.setdefault("_service_cache", {})
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+        service = build(api_name, version, credentials=load_credentials_for_user(user), cache_discovery=False)
+        cache[cache_key] = service
+        return service
     return build(api_name, version, credentials=load_credentials_for_user(user), cache_discovery=False)

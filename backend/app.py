@@ -15,7 +15,7 @@ from googleapiclient.errors import HttpError
 from gmail_service import get_unprocessed_emails, mark_processed
 from google_auth import ReauthRequired
 from oauth_routes import bp as oauth_bp
-from user_context import require_admin, require_auth, require_scheduler
+from user_context import ip_rate_limited, require_admin, require_auth, require_scheduler
 
 KST = ZoneInfo("Asia/Seoul")
 
@@ -292,7 +292,15 @@ def admin_users():
 @app.route("/access-request", methods=["POST"])
 def access_request():
     """Public endpoint: friend who isn't in OAuth Test Users yet leaves an
-    email so the developer can add them. Per-email throttle in repo layer."""
+    email so the developer can add them. Per-email throttle in repo layer +
+    per-IP throttle here to bound enumeration via different addresses."""
+    if ip_rate_limited():
+        return jsonify({
+            "success": False,
+            "throttled": True,
+            "message": "잠시 후 다시 시도해주세요.",
+        }), 429
+
     data = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip().lower()
     name = (data.get("name") or "").strip()[:MAX_ACCESS_REQUEST_NAME_CHARS]

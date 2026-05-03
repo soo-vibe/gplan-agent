@@ -43,6 +43,22 @@ def _get_client() -> anthropic.Anthropic:
     return _client
 
 
+def _parse_one_response(response) -> dict | None:
+    """Returns the parsed JSON dict, or None on parse failure (caller may retry)."""
+    for block in response.content:
+        if block.type != "text":
+            continue
+        text = block.text.strip()
+        m = _FENCE_RE.match(text)
+        if m:
+            text = m.group(1).strip()
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return None
+    return None
+
+
 def parse_schedule(message: str) -> dict:
     today = datetime.now(KST)
     tomorrow = today + timedelta(days=1)
@@ -52,25 +68,23 @@ def parse_schedule(message: str) -> dict:
         "When the message says 'tomorrow' or 'naeeil' or '내일', use " + tomorrow.strftime("%Y-%m-%d") + "."
     )
 
-    response = _get_client().messages.create(
-        model="claude-haiku-4-5",
-        max_tokens=512,
-        system=[
-            {"type": "text", "text": _STATIC_SYSTEM, "cache_control": {"type": "ephemeral"}},
-            {"type": "text", "text": dynamic_system},
-        ],
-        messages=[{"role": "user", "content": message}],
-    )
-    for block in response.content:
-        if block.type == "text":
-            text = block.text.strip()
-            m = _FENCE_RE.match(text)
-            if m:
-                text = m.group(1).strip()
-            try:
-                return json.loads(text)
-            except json.JSONDecodeError:
-                return {"has_schedule": False}
+    client = _get_client()
+    # 256 covers our schema's typical output (~150 tokens). Retry once on a
+    # JSON parse failure — Haiku 4.5 has been seen to occasionally truncate or
+    # emit prose around the JSON; a fresh sample usually fixes it.
+    for _attempt in range(2):
+        response = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=256,
+            system=[
+                {"type": "text", "text": _STATIC_SYSTEM, "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": dynamic_system},
+            ],
+            messages=[{"role": "user", "content": message}],
+        )
+        parsed = _parse_one_response(response)
+        if parsed is not None:
+            return parsed
     return {"has_schedule": False}
 
 

@@ -10,7 +10,9 @@ header (X-Scheduler-Secret) instead of per-user tokens.
 import hmac
 import os
 import time
+from collections import deque
 from functools import wraps
+from threading import Lock
 
 from flask import g, jsonify, request
 
@@ -48,6 +50,60 @@ def _token_cache_put(token: str, user: dict) -> None:
 
 def _token_cache_invalidate(token: str) -> None:
     _token_cache.pop(token, None)
+
+
+# In-memory IP rate limiter for unauthenticated endpoints (e.g. /access-request).
+# Each Cloud Run instance has its own state, so a multi-instance deployment
+# multiplies the effective limit by max-instances. With max-instances=4 and
+# 5 requests/5min per IP, the effective ceiling is ~20 requests/5min per IP —
+# tolerable for a friend-only beta. For stronger guarantees use Cloud Armor.
+_IP_LIMIT_REQS = 5
+_IP_LIMIT_WINDOW_SEC = 300
+_IP_TRACK_MAX = 10_000
+_ip_requests: dict[str, deque[float]] = {}
+_ip_lock = Lock()
+
+
+def _client_ip() -> str:
+    # Cloud Run / typical proxies forward the original client as the first
+    # entry of X-Forwarded-For. Fall back to remote_addr (which under Cloud
+    # Run is the front-end proxy, less useful but never empty).
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff:
+        return xff.split(",", 1)[0].strip()
+    return request.remote_addr or ""
+
+
+def ip_rate_limited() -> bool:
+    """Returns True if the current request's source IP has exceeded the
+    rolling window limit and the caller should reject. Returns False (and
+    records this hit) otherwise.
+
+    Fail-open on missing IP and on dictionary-full conditions — the limiter
+    is a best-effort throttle, not a hard quota."""
+    ip = _client_ip()
+    if not ip:
+        return False
+    now = time.monotonic()
+    cutoff = now - _IP_LIMIT_WINDOW_SEC
+    with _ip_lock:
+        q = _ip_requests.get(ip)
+        if q is None:
+            if len(_ip_requests) >= _IP_TRACK_MAX:
+                # Drop entries whose window has fully elapsed.
+                stale = [k for k, dq in _ip_requests.items() if not dq or dq[-1] < cutoff]
+                for k in stale:
+                    _ip_requests.pop(k, None)
+                if len(_ip_requests) >= _IP_TRACK_MAX:
+                    return False  # tracking saturated, fail open
+            q = deque()
+            _ip_requests[ip] = q
+        while q and q[0] < cutoff:
+            q.popleft()
+        if len(q) >= _IP_LIMIT_REQS:
+            return True
+        q.append(now)
+        return False
 
 
 def _extract_bearer_token() -> str | None:
