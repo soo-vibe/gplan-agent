@@ -130,6 +130,13 @@ def set_gmail_label_id(user_id: str, label_id: str) -> None:
     })
 
 
+def set_gmail_last_history_id(user_id: str, history_id: str | int) -> None:
+    """Tracks the high-water mark for Gmail incremental sync (history.list)."""
+    _get_client().collection(USERS_COLLECTION).document(user_id).update({
+        "gmail_last_history_id": str(history_id),
+    })
+
+
 def disable_user(user_id: str, *, reason: str = "") -> None:
     _get_client().collection(USERS_COLLECTION).document(user_id).update({
         "disabled": True,
