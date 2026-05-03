@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Gmail polling — incremental only.
 
 Policy: only mail that arrives AFTER a user's install is processed. Historical
@@ -18,7 +17,7 @@ The app-layer dedup (processed_messages) is the authoritative re-processing
 guard; gmail_last_history_id is the high-water mark for incremental fetch.
 """
 import base64
-from typing import Iterable
+from collections.abc import Iterable
 
 from googleapiclient.errors import HttpError
 

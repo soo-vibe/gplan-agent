@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 """Hash helpers — pure functions, no Firestore I/O."""
-from firestore_repo import _hash_token, _hash_key, _user_id_from_sub
+from firestore_repo import _hash_key, _hash_token, _user_id_from_sub
 
 
 def test_hash_token_deterministic():

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """OAuth login and callback.
 
 Flow:
@@ -23,8 +22,8 @@ import urllib.parse
 os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")
 
 from flask import Blueprint, jsonify, redirect, request
-from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 from google_auth_oauthlib.flow import Flow
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 

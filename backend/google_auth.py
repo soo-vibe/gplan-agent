@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Per-user Google credential management.
 
 Credentials live inside each user's Firestore document. On each API call we

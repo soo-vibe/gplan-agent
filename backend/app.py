@@ -1,26 +1,28 @@
-from flask import Flask, g, jsonify, request
 import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
 from email.utils import parseaddr
 from zoneinfo import ZoneInfo
+
+from dotenv import load_dotenv
+from flask import Flask, g, jsonify, request
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), override=True)
 
 import logging_setup
+
 logging_setup.configure()
 log = logging.getLogger("gplan")
 
-import firestore_repo
-
-from parser import parse_schedule, build_iso_datetime
-from calendar_service import create_event, delete_event, get_calendar_service, make_event_id
 from googleapiclient.errors import HttpError
+
+import firestore_repo
+from calendar_service import create_event, delete_event, get_calendar_service, make_event_id
 from gmail_service import get_unprocessed_emails, mark_processed
 from google_auth import ReauthRequired
 from oauth_routes import bp as oauth_bp
+from parser import build_iso_datetime, parse_schedule
 from user_context import ip_rate_limited, require_admin, require_auth, require_scheduler
 
 KST = ZoneInfo("Asia/Seoul")
@@ -276,7 +278,13 @@ def gmail_check():
                     mark_processed(g.user, email["id"])
                 except Exception:
                     pass
-        return jsonify({"success": True, "checked": len(emails), "saved": len(saved), "skipped": skipped, "events": saved})
+        return jsonify({
+            "success": True,
+            "checked": len(emails),
+            "saved": len(saved),
+            "skipped": skipped,
+            "events": saved,
+        })
     except ReauthRequired:
         return jsonify({"success": False, "error": "reauth_required"}), 401
     except Exception:
@@ -362,10 +370,14 @@ def access_request():
             "message": "잠시 후 다시 시도해주세요.",
         }), 429
 
+    if result["created"]:
+        message = "요청이 접수되었습니다. 승인 후 다시 로그인해주세요."
+    else:
+        message = "이미 접수된 요청입니다. 승인 대기 중."
     return jsonify({
         "success": True,
         "created": result["created"],
-        "message": "요청이 접수되었습니다. 승인 후 다시 로그인해주세요." if result["created"] else "이미 접수된 요청입니다. 승인 대기 중.",
+        "message": message,
     })
 
 

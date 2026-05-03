@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import base64
 import hashlib
 
@@ -23,7 +22,7 @@ def make_event_id(user_id: str, source: str, key: str) -> str:
     always produce the same id, so duplicate inserts collide (HTTP 409) on
     the Calendar side, giving us native idempotency on top of the Firestore
     dedup record."""
-    raw = f"v1|{user_id}|{source}|{key}".encode("utf-8")
+    raw = f"v1|{user_id}|{source}|{key}".encode()
     digest = hashlib.sha256(raw).digest()
     encoded = base64.b32encode(digest).translate(_B32_TRANSLATION).rstrip(b"=")
     return encoded.decode("ascii")

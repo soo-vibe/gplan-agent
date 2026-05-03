@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Structured JSON logging for Cloud Run.
 
 Cloud Logging extracts severity, message, and trace fields automatically when

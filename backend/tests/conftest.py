@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Shared pytest fixtures.
 
 The backend module imports a few clients at module scope (anthropic, firestore)

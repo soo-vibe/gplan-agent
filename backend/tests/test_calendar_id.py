@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
 """make_event_id contract: deterministic, in base32hex (lowercase a-v + 0-9),
 length within Calendar's 5–1024 char window."""
-import string
 
 from calendar_service import make_event_id
 

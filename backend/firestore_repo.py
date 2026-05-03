@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """User repository backed by Firestore.
 
 Documents are stored in the `users` collection, keyed by `usr_<base32(google_sub)>`.
@@ -9,8 +8,8 @@ import base64
 import hashlib
 import os
 import secrets
+from collections.abc import Iterator
 from datetime import datetime, timezone
-from typing import Iterator
 
 from google.cloud import firestore
 

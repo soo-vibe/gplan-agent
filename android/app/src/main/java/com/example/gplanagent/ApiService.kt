@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.gplanagent.auth.AuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.CertificatePinner
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -19,7 +20,40 @@ object ApiService {
 
     private val BASE_URL = BuildConfig.BASE_URL
 
+    /**
+     * Certificate pins for the Cloud Run backend. The chain we ship against
+     * today is:
+     *
+     *   Leaf:         CN=*.a.run.app                    (GTS WR2 issued)  — rotates ~quarterly, NOT pinned
+     *   Intermediate: CN=WR2  (Google Trust Services)   (GTS Root R1)     — pinned
+     *   Root:         CN=GTS Root R1                    (cross-signed)    — pinned
+     *
+     * OkHttp requires AT LEAST ONE of the pinned hashes to match SOME cert in
+     * the chain, so as long as either WR2 or GTS Root R1 stays in place, the
+     * app keeps working through leaf rotations.
+     *
+     * If Google rotates BOTH the intermediate and the root simultaneously
+     * (rare — root rotations happen every several years), this app dies until
+     * a new APK ships with refreshed pins. Refresh procedure:
+     *
+     *   openssl s_client -connect <host>:443 -servername <host> -showcerts \
+     *     < /dev/null 2>/dev/null > chain.pem
+     *   for c in cert*.pem; do
+     *     openssl x509 -in $c -pubkey -noout \
+     *       | openssl pkey -pubin -outform der \
+     *       | openssl dgst -sha256 -binary | base64
+     *   done
+     */
+    private val pinner = CertificatePinner.Builder()
+        .add(
+            "gplan-agent-173551063984.asia-northeast3.run.app",
+            "sha256/YPtHaftLw6/0vnc2BnNKGF54xiCA28WFcccjkA4ypCM=", // GTS WR2 (intermediate)
+            "sha256/hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=", // GTS Root R1
+        )
+        .build()
+
     private val client = OkHttpClient.Builder()
+        .certificatePinner(pinner)
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()

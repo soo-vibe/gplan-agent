@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Flask request authentication.
 
 require_auth: validates `Authorization: Bearer <token>` against Firestore and

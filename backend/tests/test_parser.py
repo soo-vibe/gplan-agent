@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
 """Parser fence-stripping logic — the JSON path that prevents Haiku 4.5's
 markdown wrapping from breaking schedule extraction."""
-import json
 from types import SimpleNamespace
 
 import parser as parser_mod
