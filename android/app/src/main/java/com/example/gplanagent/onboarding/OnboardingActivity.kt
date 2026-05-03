@@ -157,7 +157,12 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun goToMain() {
-        startActivity(Intent(this, MainActivity::class.java))
+        // 메뉴에서 진입했으면 기존 MainActivity가 스택에 있음 → 그것을 onNewIntent로 깨우고
+        // 위에 쌓인 OnboardingActivity는 자동 정리. 첫 로그인 직후 진입이면 새로 띄움.
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        startActivity(intent)
         finish()
     }
 }
