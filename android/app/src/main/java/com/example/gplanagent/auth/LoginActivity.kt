@@ -66,7 +66,8 @@ class LoginActivity : AppCompatActivity() {
                 runOnUiThread { goNext() }
             } catch (e: Exception) {
                 Log.w(TAG, "googleSignIn failed: ${e.javaClass.simpleName} ${e.message}")
-                runOnUiThread { tvStatus.text = "백엔드 인증 실패: ${e.javaClass.simpleName}" }
+                val detail = e.message?.take(120) ?: e.javaClass.simpleName
+                runOnUiThread { tvStatus.text = "백엔드 인증 실패: $detail" }
             }
         }
     }
