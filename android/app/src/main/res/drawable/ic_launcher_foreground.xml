@@ -29,15 +29,16 @@
             android:pathData="M15,15H9v2h6c1.1,0,2-0.9,2-2v-3c0-1.1-0.9-2-2-2h-4V8h6V6H9v6h6V15z" />
     </group>
 
-    <!-- Plus badge (orange circle with white plus) over the upper-right of '5'.
-         '5' digit occupies roughly (46, 52) to (61, 72) in the 108x108 viewport. -->
+    <!-- Plus badge (orange circle with white plus) above the '5'.
+         '5' digit occupies roughly (46, 52) to (61, 72); badge sits just above
+         it so the digit reads cleanly. -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M64,50 m-11,0 a11,11 0 1,0 22,0 a11,11 0 1,0 -22,0 Z" />
+        android:pathData="M64,40 m-11,0 a11,11 0 1,0 22,0 a11,11 0 1,0 -22,0 Z" />
     <path
         android:fillColor="#EF6C00"
-        android:pathData="M64,50 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+        android:pathData="M64,40 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M63,44 H65 V56 H63 Z M58,49 H70 V51 H58 Z" />
+        android:pathData="M63,34 H65 V46 H63 Z M58,39 H70 V41 H58 Z" />
 </vector>
