@@ -25,7 +25,6 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var tvStatus: TextView
     private lateinit var tvTodaySms: TextView
     private lateinit var tvTodayKakao: TextView
     private lateinit var tvTodayGmail: TextView
@@ -48,7 +47,6 @@ class MainActivity : AppCompatActivity() {
 
         AuthManager.getEmail(this)?.let { supportActionBar?.subtitle = it }
 
-        tvStatus = findViewById(R.id.tvStatus)
         tvTodaySms = findViewById(R.id.tvTodaySms)
         tvTodayKakao = findViewById(R.id.tvTodayKakao)
         tvTodayGmail = findViewById(R.id.tvTodayGmail)
@@ -69,7 +67,6 @@ class MainActivity : AppCompatActivity() {
             ScheduleEventBus.events.collect { message ->
                 runOnUiThread {
                     Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
-                    tvStatus.text = message
                     if (message.startsWith(ScheduleEventBus.SESSION_EXPIRED_PREFIX)) {
                         goToLogin()
                     } else {

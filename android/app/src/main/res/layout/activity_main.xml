@@ -65,18 +65,11 @@
     </LinearLayout>
 
     <TextView
-        android:id="@+id/tvStatus"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Waiting for new messages..."
-        android:textSize="12sp"
-        android:layout_marginBottom="8dp" />
-
-    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="상세"
         android:textStyle="bold"
+        android:layout_marginTop="8dp"
         android:layout_marginBottom="4dp" />
 
     <ScrollView
