@@ -34,21 +34,21 @@ class SmsReceiver : BroadcastReceiver() {
                 val contact = ContactLookup.lookupByPhone(appCtx, originatingAddress)
                 val senderName = contact.name.ifBlank { originatingAddress }
                 val senderOrg = contact.organization
-                val result = ApiService.parseAndSave(
+                val outcome = ScheduleProcessor.process(
                     appCtx, fullText,
                     source = "sms",
                     sender = senderName,
                     senderOrg = senderOrg,
                 )
-                if (result.success) {
-                    ScheduleEventBus.notify(result.message)
+                if (outcome.saved) {
+                    ScheduleEventBus.notify("일정 등록: ${outcome.title}")
                 }
             } catch (e: SessionExpiredException) {
                 ScheduleEventBus.notifySessionExpired()
             } catch (e: NotLoggedInException) {
                 // user logged out between check and call; ignore
             } catch (e: Exception) {
-                Log.w(TAG, "SMS parseAndSave failed: ${e.javaClass.simpleName}")
+                Log.w(TAG, "SMS process failed: ${e.javaClass.simpleName}")
             } finally {
                 pendingResult.finish()
             }

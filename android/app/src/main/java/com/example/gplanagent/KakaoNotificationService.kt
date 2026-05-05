@@ -83,21 +83,21 @@ class KakaoNotificationService : NotificationListenerService() {
 
         scope.launch {
             try {
-                val result = ApiService.parseAndSave(
+                val outcome = ScheduleProcessor.process(
                     this@KakaoNotificationService, body,
                     source = source,
                     sender = sender,
                     senderOrg = senderOrg,
                 )
-                if (result.success) {
-                    ScheduleEventBus.notify(result.message)
+                if (outcome.saved) {
+                    ScheduleEventBus.notify("일정 등록: ${outcome.title}")
                 }
             } catch (e: SessionExpiredException) {
                 ScheduleEventBus.notifySessionExpired()
             } catch (e: NotLoggedInException) {
                 // ignore
             } catch (e: Exception) {
-                Log.w(TAG, "parseAndSave failed: ${e.javaClass.simpleName}")
+                Log.w(TAG, "process failed: ${e.javaClass.simpleName}")
             }
         }
     }

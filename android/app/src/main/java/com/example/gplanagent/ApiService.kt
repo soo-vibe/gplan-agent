@@ -75,20 +75,18 @@ object ApiService {
         }
     }
 
-    data class SourceStats(val sms: Int, val kakao: Int, val gmail: Int, val total: Int)
-
-    data class TodayEvent(val id: String, val title: String, val start: String, val source: String)
-
-    data class StatsResult(
-        val todayAdded: SourceStats,
-        val todayList: List<TodayEvent>
-    )
-
-    data class SaveResult(val success: Boolean, val message: String, val eventLink: String = "")
-
-    data class Profile(val email: String, val name: String, val picture: String)
-
     data class Session(val token: String, val email: String)
+
+    data class ParsedSchedule(
+        val hasSchedule: Boolean,
+        val title: String,
+        val date: String,
+        val startTime: String,
+        val endTime: String,
+        val location: String,
+        val meetingUrl: String,
+        val description: String,
+    )
 
     /** Exchange Google ID token for backend api_token. Public (no Bearer needed). */
     suspend fun googleSignIn(ctx: Context, idToken: String): Session = withContext(Dispatchers.IO) {
@@ -105,89 +103,26 @@ object ApiService {
         }
     }
 
-    suspend fun getStats(ctx: Context): StatsResult = withContext(Dispatchers.IO) {
-        val request = authedBuilder(ctx, "$BASE_URL/stats").get().build()
+    /** LLM-only parsing. Calendar write happens client-side via CalendarRepo. */
+    suspend fun parse(ctx: Context, message: String): ParsedSchedule = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("message", message).toString().toRequestBody(JSON)
+        val request = authedBuilder(ctx, "$BASE_URL/parse").post(body).build()
         client.newCall(request).execute().use { response ->
             handleAuth(ctx, response)
-            val json = JSONObject(response.body!!.string())
-
-            fun parseSource(obj: JSONObject) = SourceStats(
-                sms = obj.optInt("sms", 0),
-                kakao = obj.optInt("kakao", 0),
-                gmail = obj.optInt("gmail", 0),
-                total = obj.optInt("total", 0)
-            )
-
-            val listArray = json.optJSONArray("today_list")
-            val todayList = mutableListOf<TodayEvent>()
-            if (listArray != null) {
-                for (i in 0 until listArray.length()) {
-                    val item = listArray.getJSONObject(i)
-                    todayList.add(TodayEvent(
-                        id = item.optString("id"),
-                        title = item.optString("title"),
-                        start = item.optString("start"),
-                        source = item.optString("source")
-                    ))
-                }
+            if (!response.isSuccessful) {
+                throw RuntimeException("parse failed: ${response.code}")
             }
-
-            StatsResult(
-                todayAdded = parseSource(json.getJSONObject("today_added")),
-                todayList = todayList
-            )
-        }
-    }
-
-    suspend fun parseAndSave(
-        ctx: Context,
-        message: String,
-        source: String = "",
-        sender: String = "",
-        senderOrg: String = "",
-    ): SaveResult = withContext(Dispatchers.IO) {
-        val body = JSONObject()
-            .put("message", message)
-            .put("source", source)
-            .put("sender", sender)
-            .put("sender_org", senderOrg)
-            .toString()
-            .toRequestBody(JSON)
-        val request = authedBuilder(ctx, "$BASE_URL/parse-and-save")
-            .post(body)
-            .build()
-        client.newCall(request).execute().use { response ->
-            handleAuth(ctx, response)
             val json = JSONObject(response.body!!.string())
-            SaveResult(
-                success = json.optBoolean("success", false),
-                message = json.optString("message"),
-                eventLink = json.optJSONObject("event")?.optString("link") ?: ""
+            ParsedSchedule(
+                hasSchedule = json.optBoolean("has_schedule", false),
+                title = json.optString("title", ""),
+                date = json.optString("date", ""),
+                startTime = json.optString("start_time", ""),
+                endTime = json.optString("end_time", ""),
+                location = json.optString("location", ""),
+                meetingUrl = json.optString("meeting_url", ""),
+                description = json.optString("description", ""),
             )
-        }
-    }
-
-    suspend fun getMe(ctx: Context): Profile = withContext(Dispatchers.IO) {
-        val request = authedBuilder(ctx, "$BASE_URL/me").get().build()
-        client.newCall(request).execute().use { response ->
-            handleAuth(ctx, response)
-            val json = JSONObject(response.body!!.string())
-            Profile(
-                email = json.optString("email"),
-                name = json.optString("name"),
-                picture = json.optString("picture")
-            )
-        }
-    }
-
-    suspend fun deleteEvent(ctx: Context, eventId: String): Boolean = withContext(Dispatchers.IO) {
-        val request = authedBuilder(ctx, "$BASE_URL/event/$eventId")
-            .delete()
-            .build()
-        client.newCall(request).execute().use { response ->
-            handleAuth(ctx, response)
-            val json = JSONObject(response.body!!.string())
-            json.optBoolean("success", false)
         }
     }
 

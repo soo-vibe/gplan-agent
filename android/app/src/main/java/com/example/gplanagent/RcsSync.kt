@@ -30,20 +30,20 @@ object RcsSync {
             for (msg in messages) {
                 try {
                     val contact = ContactLookup.lookupByPhone(ctx, msg.address)
-                    val result = ApiService.parseAndSave(
+                    val outcome = ScheduleProcessor.process(
                         ctx, msg.body,
                         source = "rcs",
                         sender = contact.name.ifBlank { msg.address },
                         senderOrg = contact.organization,
                     )
-                    if (result.success) savedAny = true
+                    if (outcome.saved) savedAny = true
                 } catch (e: SessionExpiredException) {
                     ScheduleEventBus.notifySessionExpired()
                     return@withLock
                 } catch (e: NotLoggedInException) {
                     return@withLock
                 } catch (e: Exception) {
-                    Log.w(TAG, "RCS parseAndSave failed: ${e.javaClass.simpleName}")
+                    Log.w(TAG, "RCS process failed: ${e.javaClass.simpleName}")
                 }
                 if (msg.id > maxId) maxId = msg.id
             }

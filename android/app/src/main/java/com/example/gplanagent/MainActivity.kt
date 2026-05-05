@@ -139,28 +139,26 @@ class MainActivity : AppCompatActivity() {
     private fun loadStats() {
         lifecycleScope.launch {
             try {
-                val stats = ApiService.getStats(this@MainActivity)
+                val events = CalendarRepo.listEventsForToday(this@MainActivity)
+                val counts = events.groupingBy { it.source }.eachCount()
                 runOnUiThread {
-                    tvTodaySms.text = stats.todayAdded.sms.toString()
-                    tvTodayKakao.text = stats.todayAdded.kakao.toString()
-                    tvTodayGmail.text = stats.todayAdded.gmail.toString()
+                    // SMS tab counts both sms and rcs sources; Gmail tab counts gmail and naver.
+                    tvTodaySms.text = ((counts["sms"] ?: 0) + (counts["rcs"] ?: 0)).toString()
+                    tvTodayKakao.text = (counts["kakao"] ?: 0).toString()
+                    tvTodayGmail.text = ((counts["gmail"] ?: 0) + (counts["naver"] ?: 0)).toString()
 
                     llSmsContainer.removeAllViews()
-                    stats.todayList.forEach { event ->
+                    events.forEach { event ->
                         llSmsContainer.addView(createEventItemView(event))
                     }
                 }
-            } catch (e: SessionExpiredException) {
-                runOnUiThread { goToLogin() }
-            } catch (e: NotLoggedInException) {
-                runOnUiThread { goToLogin() }
             } catch (e: Exception) {
-                Log.w(TAG, "loadStats failed: ${e.javaClass.simpleName}")
+                Log.w(TAG, "loadStats failed: ${e.javaClass.simpleName} ${e.message}")
             }
         }
     }
 
-    private fun createEventItemView(event: ApiService.TodayEvent): View {
+    private fun createEventItemView(event: CalendarRepo.Event): View {
         val outer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 8, 0, 8)
@@ -232,14 +230,14 @@ class MainActivity : AppCompatActivity() {
         return outer
     }
 
-    private fun confirmAndDelete(event: ApiService.TodayEvent) {
+    private fun confirmAndDelete(event: CalendarRepo.Event) {
         AlertDialog.Builder(this)
             .setTitle("일정 삭제")
             .setMessage("Google 캘린더에서 영구 삭제됩니다.\n\n[${event.source.uppercase()}] ${event.title}\n\n삭제하시겠습니까?")
             .setPositiveButton("삭제") { _, _ ->
                 lifecycleScope.launch {
                     try {
-                        val ok = ApiService.deleteEvent(this@MainActivity, event.id)
+                        val ok = CalendarRepo.deleteEvent(this@MainActivity, event.id)
                         runOnUiThread {
                             Toast.makeText(
                                 this@MainActivity,
@@ -248,8 +246,6 @@ class MainActivity : AppCompatActivity() {
                             ).show()
                             loadStats()
                         }
-                    } catch (e: SessionExpiredException) {
-                        runOnUiThread { goToLogin() }
                     } catch (e: Exception) {
                         Log.w(TAG, "deleteEvent failed: ${e.javaClass.simpleName}")
                         runOnUiThread {
