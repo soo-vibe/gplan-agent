@@ -11,6 +11,10 @@ if (localPropertiesFile.exists()) {
     }
 }
 def scheduleBaseUrl = localProperties.getProperty('schedule.baseUrl', 'http://10.0.2.2:5000')
+def googleWebClientId = localProperties.getProperty(
+    'google.webClientId',
+    '173551063984-m29tuhrfhj3c95efl702m3qcmq62u2gg.apps.googleusercontent.com'
+)
 
 def releaseStoreFile = localProperties.getProperty('signing.storeFile', '')
 def releaseStorePassword = localProperties.getProperty('signing.storePassword', '')
@@ -29,6 +33,7 @@ android {
         versionName "2.0"
 
         buildConfigField "String", "BASE_URL", "\"${scheduleBaseUrl}\""
+        buildConfigField "String", "GOOGLE_WEB_CLIENT_ID", "\"${googleWebClientId}\""
     }
 
     buildFeatures {
@@ -77,7 +82,10 @@ dependencies {
     // 보안 저장소 (EncryptedSharedPreferences)
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'
 
-    // OAuth용 Custom Tabs
+    // Google 로그인 (Calendar 스코프 포함)
+    implementation 'com.google.android.gms:play-services-auth:21.2.0'
+
+    // OAuth용 Custom Tabs (구 플로우 — PR3에서 제거 예정)
     implementation 'androidx.browser:browser:1.8.0'
 
     // HTTP 통신

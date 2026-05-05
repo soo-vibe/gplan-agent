@@ -126,6 +126,47 @@ def upsert_user_from_oauth(
     return _doc_with_id(snap), raw_token
 
 
+def upsert_user_from_id_token(
+    *,
+    sub: str,
+    email: str,
+    name: str,
+    picture: str,
+) -> tuple[dict, str]:
+    """Variant of upsert_user_from_oauth for the GoogleSignIn-only flow.
+
+    Does NOT touch `google_credentials` because the new flow leaves Google
+    API access on the device. If the user already had server-side OAuth
+    credentials from the legacy flow they remain intact (so existing
+    backend-side Calendar/Gmail calls continue to work during the PR1→PR3
+    transition window).
+    """
+    user_id = _user_id_from_sub(sub)
+    raw_token = secrets.token_urlsafe(32)
+    now = datetime.now(timezone.utc)
+
+    doc_ref = _get_client().collection(USERS_COLLECTION).document(user_id)
+    existing = doc_ref.get()
+    base = existing.to_dict() if existing.exists else {}
+
+    payload = {
+        "google_sub": sub,
+        "email": email,
+        "name": name,
+        "picture": picture,
+        "api_token_hash": _hash_token(raw_token),
+        "api_token_prefix": raw_token[:8],
+        "last_seen_at": now,
+        "disabled": False,
+    }
+    if not existing.exists:
+        payload["created_at"] = now
+
+    doc_ref.set({**base, **payload}, merge=True)
+    snap = doc_ref.get()
+    return _doc_with_id(snap), raw_token
+
+
 def update_credentials(user_id: str, creds_dict: dict) -> None:
     _get_client().collection(USERS_COLLECTION).document(user_id).update({
         "google_credentials": creds_dict,

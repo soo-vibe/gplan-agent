@@ -1,22 +1,39 @@
 package com.example.gplanagent.auth
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.browser.customtabs.CustomTabsIntent
-import com.example.gplanagent.BuildConfig
+import androidx.lifecycle.lifecycleScope
+import com.example.gplanagent.ApiService
 import com.example.gplanagent.MainActivity
 import com.example.gplanagent.R
 import com.example.gplanagent.onboarding.OnboardingActivity
 import com.example.gplanagent.onboarding.PermissionStatus
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.common.api.ApiException
+import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var tvStatus: TextView
+
+    private val signInLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            handleSignedIn(account)
+        } catch (e: ApiException) {
+            tvStatus.text = "로그인 실패 (코드 ${e.statusCode})"
+            Log.w(TAG, "GoogleSignIn ApiException: ${e.statusCode}")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,59 +43,32 @@ class LoginActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvLoginEmail).text = AuthManager.getEmail(this) ?: ""
 
         findViewById<Button>(R.id.btnSignIn).setOnClickListener {
-            tvStatus.text = "브라우저로 이동 중..."
-            val nonce = AuthManager.beginPendingLogin(this)
-            val url = Uri.parse("${BuildConfig.BASE_URL}/oauth/login")
-                .buildUpon()
-                .appendQueryParameter("nonce", nonce)
-                .build()
-            CustomTabsIntent.Builder().build().launchUrl(this, url)
+            tvStatus.text = "Google 계정 선택 중..."
+            signInLauncher.launch(GoogleAuthManager.client(this).signInIntent)
         }
 
-        findViewById<Button>(R.id.btnRequestAccess).setOnClickListener {
-            startActivity(Intent(this, AccessRequestActivity::class.java))
-        }
-
-        if (intent?.data == null && AuthManager.isLoggedIn(this)) {
+        if (AuthManager.isLoggedIn(this)) {
             goNext()
-            return
         }
-        handleAuthIntent(intent)
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleAuthIntent(intent)
-    }
-
-    private fun handleAuthIntent(intent: Intent?) {
-        val data = intent?.data ?: return
-        if (data.scheme != "gplanagent" || data.host != "login") return
-
-        val expectedNonce = AuthManager.consumePendingNonce(this)
-        val gotNonce = data.getQueryParameter("nonce") ?: ""
-        if (expectedNonce.isNullOrEmpty() || expectedNonce != gotNonce) {
-            // No pending login or nonce mismatch — likely a forged deep link
-            // from another app. Refuse to accept any token in this intent.
-            Log.w(TAG, "Rejecting deep link: nonce mismatch")
-            tvStatus.text = "로그인 실패: 잘못된 응답"
+    private fun handleSignedIn(account: GoogleSignInAccount) {
+        val idToken = account.idToken
+        if (idToken.isNullOrEmpty()) {
+            tvStatus.text = "ID 토큰을 받지 못했습니다"
             return
         }
-
-        val err = data.getQueryParameter("error")
-        if (err != null) {
-            tvStatus.text = "로그인 실패: $err"
-            return
+        tvStatus.text = "백엔드 인증 중..."
+        lifecycleScope.launch {
+            try {
+                val session = ApiService.googleSignIn(this@LoginActivity, idToken)
+                AuthManager.saveSession(this@LoginActivity, session.token, session.email)
+                runOnUiThread { goNext() }
+            } catch (e: Exception) {
+                Log.w(TAG, "googleSignIn failed: ${e.javaClass.simpleName} ${e.message}")
+                runOnUiThread { tvStatus.text = "백엔드 인증 실패: ${e.javaClass.simpleName}" }
+            }
         }
-        val token = data.getQueryParameter("token")
-        if (token.isNullOrEmpty()) {
-            tvStatus.text = "토큰을 받지 못했습니다"
-            return
-        }
-        val email = data.getQueryParameter("email") ?: ""
-        AuthManager.saveSession(this, token, email)
-        goNext()
     }
 
     private fun goNext() {

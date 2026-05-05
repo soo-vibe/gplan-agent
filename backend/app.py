@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import uuid
@@ -15,6 +16,8 @@ import logging_setup
 logging_setup.configure()
 log = logging.getLogger("gplan")
 
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 from googleapiclient.errors import HttpError
 
 import firestore_repo
@@ -184,6 +187,57 @@ def _handle_reauth(_e):
 @app.errorhandler(413)
 def _handle_too_large(_e):
     return jsonify({"error": "request too large"}), 413
+
+
+_web_client_id_cache: str | None = None
+
+
+def _web_client_id() -> str:
+    """Web OAuth client ID — used as audience when verifying Google ID tokens
+    sent by the Android app. Reuses the OAuth client config that the legacy
+    /oauth/* flow already consumes."""
+    global _web_client_id_cache
+    if _web_client_id_cache is None:
+        raw = os.environ.get("GOOGLE_OAUTH_CLIENT", "")
+        if not raw:
+            raise RuntimeError("GOOGLE_OAUTH_CLIENT unset")
+        _web_client_id_cache = json.loads(raw)["web"]["client_id"]
+    return _web_client_id_cache
+
+
+@app.route("/auth/google-signin", methods=["POST"])
+def auth_google_signin():
+    """Exchange a Google ID token (obtained on-device via Google Sign-In) for
+    a backend api_token. Replaces the legacy /oauth/login + deep-link flow.
+
+    The ID token's audience must match our Web OAuth client ID, which proves
+    the token was minted for this app's GCP project."""
+    data = request.get_json(silent=True) or {}
+    raw_token = (data.get("id_token") or "").strip()
+    if not raw_token:
+        return jsonify({"success": False, "error": "missing_id_token"}), 400
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            raw_token,
+            google_requests.Request(),
+            _web_client_id(),
+            clock_skew_in_seconds=10,
+        )
+    except ValueError:
+        return jsonify({"success": False, "error": "invalid_id_token"}), 401
+
+    sub = idinfo.get("sub")
+    if not sub:
+        return jsonify({"success": False, "error": "no_subject"}), 401
+
+    email = idinfo.get("email", "")
+    name = idinfo.get("name", "")
+    picture = idinfo.get("picture", "")
+
+    _, api_token = firestore_repo.upsert_user_from_id_token(
+        sub=sub, email=email, name=name, picture=picture,
+    )
+    return jsonify({"success": True, "token": api_token, "email": email})
 
 
 @app.route("/health", methods=["GET"])

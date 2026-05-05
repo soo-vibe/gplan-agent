@@ -2,6 +2,7 @@ package com.example.gplanagent
 
 import android.content.Context
 import com.example.gplanagent.auth.AuthManager
+import com.example.gplanagent.auth.GoogleAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.CertificatePinner
@@ -86,6 +87,23 @@ object ApiService {
     data class SaveResult(val success: Boolean, val message: String, val eventLink: String = "")
 
     data class Profile(val email: String, val name: String, val picture: String)
+
+    data class Session(val token: String, val email: String)
+
+    /** Exchange Google ID token for backend api_token. Public (no Bearer needed). */
+    suspend fun googleSignIn(ctx: Context, idToken: String): Session = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("id_token", idToken).toString().toRequestBody(JSON)
+        val request = Request.Builder()
+            .url("$BASE_URL/auth/google-signin")
+            .post(body)
+            .build()
+        client.newCall(request).execute().use { response ->
+            val raw = response.body!!.string()
+            if (!response.isSuccessful) throw RuntimeException("auth failed: ${response.code} $raw")
+            val json = JSONObject(raw)
+            Session(token = json.getString("token"), email = json.optString("email"))
+        }
+    }
 
     suspend fun getStats(ctx: Context): StatsResult = withContext(Dispatchers.IO) {
         val request = authedBuilder(ctx, "$BASE_URL/stats").get().build()
@@ -173,24 +191,6 @@ object ApiService {
         }
     }
 
-    /** Public endpoint — no auth header needed (called from AccessRequestActivity). */
-    suspend fun requestAccess(ctx: Context, email: String, name: String = ""): String = withContext(Dispatchers.IO) {
-        val body = JSONObject()
-            .put("email", email)
-            .put("name", name)
-            .toString()
-            .toRequestBody(JSON)
-        val request = Request.Builder()
-            .url("$BASE_URL/access-request")
-            .post(body)
-            .build()
-        client.newCall(request).execute().use { response ->
-            val raw = response.body!!.string()
-            if (!response.isSuccessful) throw RuntimeException(raw)
-            JSONObject(raw).optString("message", "요청 접수됨")
-        }
-    }
-
     suspend fun logout(ctx: Context) = withContext(Dispatchers.IO) {
         try {
             val request = authedBuilder(ctx, "$BASE_URL/logout")
@@ -198,8 +198,9 @@ object ApiService {
                 .build()
             client.newCall(request).execute().close()
         } catch (_: Exception) {
-            // best-effort; clear local token regardless
+            // best-effort; clear local state regardless
         }
+        try { GoogleAuthManager.signOut(ctx) } catch (_: Exception) {}
         AuthManager.clear(ctx)
     }
 }
