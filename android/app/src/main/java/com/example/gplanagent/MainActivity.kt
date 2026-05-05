@@ -15,6 +15,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.gplanagent.auth.AuthManager
+import com.example.gplanagent.auth.GoogleAuthManager
 import com.example.gplanagent.auth.LoginActivity
 import com.example.gplanagent.onboarding.OnboardingActivity
 import com.example.gplanagent.onboarding.PermissionStatus
@@ -31,7 +32,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var llSmsContainer: LinearLayout
     private lateinit var tvPermissionWarning: TextView
 
-    // Throttle /stats refreshes to once per second when many events arrive in
+    // Throttle list refreshes to once per second when many events arrive in
     // a burst (e.g., processing several queued SMS in quick succession).
     private var lastStatsLoadAt = 0L
 
@@ -124,7 +125,7 @@ class MainActivity : AppCompatActivity() {
                     .setMessage("로그아웃 하시겠습니까?")
                     .setPositiveButton("로그아웃") { _, _ ->
                         lifecycleScope.launch {
-                            ApiService.logout(this@MainActivity)
+                            try { GoogleAuthManager.signOut(this@MainActivity) } catch (_: Exception) {}
                             runOnUiThread { goToLogin() }
                         }
                     }

@@ -47,7 +47,5 @@ def configure() -> None:
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(os.environ.get("LOG_LEVEL", "INFO").upper())
-    # Tone down chatty third-party loggers — googleapiclient logs every
-    # discovery fetch at INFO which would dominate the stream.
-    logging.getLogger("googleapiclient.discovery").setLevel(logging.WARNING)
+    # Tone down chatty third-party loggers.
     logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)

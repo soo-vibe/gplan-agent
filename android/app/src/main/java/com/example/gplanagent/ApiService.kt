@@ -1,7 +1,6 @@
 package com.example.gplanagent
 
 import android.content.Context
-import com.example.gplanagent.auth.AuthManager
 import com.example.gplanagent.auth.GoogleAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -35,15 +34,7 @@ object ApiService {
      *
      * If Google rotates BOTH the intermediate and the root simultaneously
      * (rare — root rotations happen every several years), this app dies until
-     * a new APK ships with refreshed pins. Refresh procedure:
-     *
-     *   openssl s_client -connect <host>:443 -servername <host> -showcerts \
-     *     < /dev/null 2>/dev/null > chain.pem
-     *   for c in cert*.pem; do
-     *     openssl x509 -in $c -pubkey -noout \
-     *       | openssl pkey -pubin -outform der \
-     *       | openssl dgst -sha256 -binary | base64
-     *   done
+     * a new APK ships with refreshed pins.
      */
     private val pinner = CertificatePinner.Builder()
         .add(
@@ -61,21 +52,22 @@ object ApiService {
 
     private val JSON = "application/json; charset=utf-8".toMediaType()
 
-    private fun authedBuilder(ctx: Context, url: String): Request.Builder {
-        val token = AuthManager.getToken(ctx) ?: throw NotLoggedInException()
+    private suspend fun authedBuilder(ctx: Context, url: String): Request.Builder {
+        val idToken = try {
+            GoogleAuthManager.getIdToken(ctx)
+        } catch (e: Exception) {
+            throw NotLoggedInException()
+        }
         return Request.Builder()
             .url(url)
-            .header("Authorization", "Bearer $token")
+            .header("Authorization", "Bearer $idToken")
     }
 
-    private fun handleAuth(ctx: Context, response: Response) {
+    private fun handleAuth(response: Response) {
         if (response.code == 401) {
-            AuthManager.clear(ctx)
             throw SessionExpiredException()
         }
     }
-
-    data class Session(val token: String, val email: String)
 
     data class ParsedSchedule(
         val hasSchedule: Boolean,
@@ -88,27 +80,12 @@ object ApiService {
         val description: String,
     )
 
-    /** Exchange Google ID token for backend api_token. Public (no Bearer needed). */
-    suspend fun googleSignIn(ctx: Context, idToken: String): Session = withContext(Dispatchers.IO) {
-        val body = JSONObject().put("id_token", idToken).toString().toRequestBody(JSON)
-        val request = Request.Builder()
-            .url("$BASE_URL/auth/google-signin")
-            .post(body)
-            .build()
-        client.newCall(request).execute().use { response ->
-            val raw = response.body!!.string()
-            if (!response.isSuccessful) throw RuntimeException("auth failed: ${response.code} $raw")
-            val json = JSONObject(raw)
-            Session(token = json.getString("token"), email = json.optString("email"))
-        }
-    }
-
     /** LLM-only parsing. Calendar write happens client-side via CalendarRepo. */
     suspend fun parse(ctx: Context, message: String): ParsedSchedule = withContext(Dispatchers.IO) {
         val body = JSONObject().put("message", message).toString().toRequestBody(JSON)
         val request = authedBuilder(ctx, "$BASE_URL/parse").post(body).build()
         client.newCall(request).execute().use { response ->
-            handleAuth(ctx, response)
+            handleAuth(response)
             if (!response.isSuccessful) {
                 throw RuntimeException("parse failed: ${response.code}")
             }
@@ -124,18 +101,5 @@ object ApiService {
                 description = json.optString("description", ""),
             )
         }
-    }
-
-    suspend fun logout(ctx: Context) = withContext(Dispatchers.IO) {
-        try {
-            val request = authedBuilder(ctx, "$BASE_URL/logout")
-                .post("".toRequestBody(JSON))
-                .build()
-            client.newCall(request).execute().close()
-        } catch (_: Exception) {
-            // best-effort; clear local state regardless
-        }
-        try { GoogleAuthManager.signOut(ctx) } catch (_: Exception) {}
-        AuthManager.clear(ctx)
     }
 }

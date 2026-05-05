@@ -8,15 +8,20 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * Wraps Google Sign-In so the app gets:
  *   - an ID token (audience = backend Web client ID) for backend auth, and
  *   - an OAuth access token with calendar.events scope for direct Calendar
  *     API calls from the device.
+ *
+ * Single source of truth for sign-in state — AuthManager defers to the
+ * cached GoogleSignInAccount instead of holding its own session.
  */
 object GoogleAuthManager {
     const val SCOPE_CALENDAR_EVENTS = "https://www.googleapis.com/auth/calendar.events"
@@ -37,6 +42,33 @@ object GoogleAuthManager {
 
     fun lastSignedInAccount(ctx: Context): GoogleSignInAccount? =
         GoogleSignIn.getLastSignedInAccount(ctx)
+
+    /**
+     * Returns a fresh Google ID token (audience = Web client ID). silentSignIn
+     * refreshes ID/access tokens transparently when the cached one is expired,
+     * and serves the cached one without a network call when still valid.
+     *
+     * Throws if the user is not signed in (no last account) or if the refresh
+     * fails (revoked grant, network error). The caller treats this as a
+     * session-expired situation and bounces back to LoginActivity.
+     */
+    suspend fun getIdToken(ctx: Context): String =
+        suspendCancellableCoroutine { cont ->
+            client(ctx).silentSignIn().addOnCompleteListener { task ->
+                if (!cont.isActive) return@addOnCompleteListener
+                try {
+                    val account = task.getResult(ApiException::class.java)
+                    val idToken = account.idToken
+                    if (idToken.isNullOrEmpty()) {
+                        cont.resumeWithException(IllegalStateException("no idToken on refreshed account"))
+                    } else {
+                        cont.resume(idToken)
+                    }
+                } catch (e: Exception) {
+                    cont.resumeWithException(e)
+                }
+            }
+        }
 
     /**
      * Synchronously fetches a fresh OAuth access token for Calendar API.

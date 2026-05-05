@@ -79,14 +79,8 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
-    // 보안 저장소 (EncryptedSharedPreferences)
-    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
-
     // Google 로그인 (Calendar 스코프 포함)
     implementation 'com.google.android.gms:play-services-auth:21.2.0'
-
-    // OAuth용 Custom Tabs (구 플로우 — PR3에서 제거 예정)
-    implementation 'androidx.browser:browser:1.8.0'
 
     // HTTP 통신
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'

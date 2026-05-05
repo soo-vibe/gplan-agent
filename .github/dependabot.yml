@@ -4,7 +4,7 @@
 # Schedules are spread out so a busy week doesn't bury us in PRs.
 version: 2
 updates:
-  # Backend Python deps (Flask, anthropic, google-cloud-firestore, etc.)
+  # Backend Python deps (Flask, anthropic, google-auth, etc.)
   - package-ecosystem: "pip"
     directory: "/backend"
     schedule:
