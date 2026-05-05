@@ -121,28 +121,38 @@ object CalendarRepo {
         }
     }
 
+    /**
+     * Returns events the agent CREATED today, regardless of when the event
+     * itself starts (an SMS sent today about a meeting next week still
+     * appears in today's list).
+     *
+     * Uses updatedMin to bound the server response to events touched today,
+     * then filters client-side by:
+     *   - extendedProperties.private.gplan_source (only agent-created events)
+     *   - created >= start of today (skip events merely *updated* today)
+     */
     suspend fun listEventsForToday(
         ctx: Context,
         timeZone: String = "Asia/Seoul",
     ): List<Event> = withContext(Dispatchers.IO) {
         val tz = TimeZone.getTimeZone(timeZone)
-        val cal = Calendar.getInstance(tz)
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        val timeMin = isoFormat(cal.time, tz)
-        cal.add(Calendar.DAY_OF_MONTH, 1)
-        val timeMax = isoFormat(cal.time, tz)
+        val todayStart = Calendar.getInstance(tz).apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val todayStartMs = todayStart.timeInMillis
+        val todayStartIso = isoFormat(todayStart.time, tz)
+        val rangeStart = (todayStart.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, -30) }
+        val rangeEnd = (todayStart.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 365) }
 
-        // Calendar API doesn't support a wildcard match on extendedProperties,
-        // so we list everything in the window and filter to gplan-tagged events
-        // client-side. Today-only window keeps the response small.
         val url = eventsUrl()
-            .addQueryParameter("timeMin", timeMin)
-            .addQueryParameter("timeMax", timeMax)
+            .addQueryParameter("timeMin", isoFormat(rangeStart.time, tz))
+            .addQueryParameter("timeMax", isoFormat(rangeEnd.time, tz))
+            .addQueryParameter("updatedMin", todayStartIso)
             .addQueryParameter("singleEvents", "true")
-            .addQueryParameter("orderBy", "startTime")
+            .addQueryParameter("orderBy", "updated")
             .addQueryParameter("maxResults", "100")
             .build()
 
@@ -161,6 +171,8 @@ object CalendarRepo {
                     ?.optString("gplan_source", "")
                     ?: ""
                 if (source.isEmpty()) continue
+                val createdMs = parseRfc3339(item.optString("created", ""))
+                if (createdMs < todayStartMs) continue
                 out.add(
                     Event(
                         id = item.optString("id"),
@@ -171,6 +183,19 @@ object CalendarRepo {
                 )
             }
             out
+        }
+    }
+
+    private fun parseRfc3339(s: String): Long {
+        if (s.isEmpty()) return 0L
+        return try {
+            // Calendar API returns "2026-05-05T12:34:56.789Z"
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US)
+                .parse(s)?.time ?: 0L
+        } catch (_: Exception) {
+            try {
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).parse(s)?.time ?: 0L
+            } catch (_: Exception) { 0L }
         }
     }
 
