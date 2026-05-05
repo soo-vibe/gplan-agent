@@ -120,7 +120,6 @@ def upsert_user_from_oauth(
     }
     if not existing.exists:
         payload["created_at"] = now
-        payload["gmail_label_id"] = None
 
     doc_ref.set({**base, **payload}, merge=True)
     snap = doc_ref.get()
@@ -130,12 +129,6 @@ def upsert_user_from_oauth(
 def update_credentials(user_id: str, creds_dict: dict) -> None:
     _get_client().collection(USERS_COLLECTION).document(user_id).update({
         "google_credentials": creds_dict,
-    })
-
-
-def set_gmail_label_id(user_id: str, label_id: str) -> None:
-    _get_client().collection(USERS_COLLECTION).document(user_id).update({
-        "gmail_label_id": label_id,
     })
 
 

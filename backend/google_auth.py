@@ -91,9 +91,8 @@ def load_credentials_for_user(user: dict) -> Credentials:
 
 def get_service_for_user(user: dict, api_name: str, version: str):
     """Returns a Google API client, cached for the lifetime of the current
-    request. Without the cache, each `_save_event` and `mark_processed`
-    re-parses the discovery JSON; in /gmail/check-all that's ~2× per email
-    per user. The cache is request-scoped via flask.g so cross-request
+    request. Without the cache, each `_save_event` re-parses the discovery
+    JSON. The cache is request-scoped via flask.g so cross-request
     credential rotation is still picked up on the next request."""
     cache_key = (user.get("id", ""), api_name, version)
     if has_app_context():

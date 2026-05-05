@@ -24,55 +24,12 @@ from googleapiclient.errors import HttpError
 import firestore_repo
 from google_auth import get_service_for_user
 
-PROCESSED_LABEL = "ScheduleAgent/Processed"
 HISTORY_PAGE_SIZE = 100  # cap per page; we paginate to drain
 GET_BODY_TRUNCATE = 1500
 
 
 def get_gmail_service(user: dict):
     return get_service_for_user(user, "gmail", "v1")
-
-
-def _find_label_id(service, name: str) -> str | None:
-    existing = service.users().labels().list(userId="me").execute().get("labels", [])
-    for label in existing:
-        if label["name"] == name:
-            return label["id"]
-    return None
-
-
-def _ensure_label_id(user: dict, service) -> str:
-    cached = user.get("gmail_label_id")
-    if cached:
-        return cached
-
-    found = _find_label_id(service, PROCESSED_LABEL)
-    if found:
-        firestore_repo.set_gmail_label_id(user["id"], found)
-        user["gmail_label_id"] = found
-        return found
-
-    try:
-        created = service.users().labels().create(
-            userId="me",
-            body={
-                "name": PROCESSED_LABEL,
-                "labelListVisibility": "labelShow",
-                "messageListVisibility": "show",
-            },
-        ).execute()
-        label_id = created["id"]
-    except HttpError as e:
-        # 409: another concurrent request created the label first.
-        if e.resp.status != 409:
-            raise
-        label_id = _find_label_id(service, PROCESSED_LABEL)
-        if not label_id:
-            raise
-
-    firestore_repo.set_gmail_label_id(user["id"], label_id)
-    user["gmail_label_id"] = label_id
-    return label_id
 
 
 def _extract_body(payload) -> str:
@@ -206,13 +163,3 @@ def get_unprocessed_emails(user: dict, within_days: int = 1) -> list:
         user["gmail_last_history_id"] = new_history_id
 
     return emails
-
-
-def mark_processed(user: dict, message_id: str) -> None:
-    service = get_gmail_service(user)
-    label_id = _ensure_label_id(user, service)
-    service.users().messages().modify(
-        userId="me",
-        id=message_id,
-        body={"addLabelIds": [label_id]},
-    ).execute()

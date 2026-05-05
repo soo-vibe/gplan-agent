@@ -19,7 +19,7 @@ from googleapiclient.errors import HttpError
 
 import firestore_repo
 from calendar_service import create_event, delete_event, get_calendar_service, make_event_id
-from gmail_service import get_unprocessed_emails, mark_processed
+from gmail_service import get_unprocessed_emails
 from google_auth import ReauthRequired
 from oauth_routes import bp as oauth_bp
 from parser import build_iso_datetime, parse_schedule
@@ -262,22 +262,14 @@ def gmail_check():
         for email in emails:
             text = f"{email['subject']} {email['body']}"
             sender_name, sender_domain = _split_email_from(email.get("sender", ""))
-            try:
-                result = _process_message(
-                    g.user, source="gmail", key=email["id"], text=text,
-                    sender=sender_name, sender_org=sender_domain,
-                )
-                if result["skipped"]:
-                    skipped += 1
-                elif result["event"] is not None:
-                    saved.append(result["event"])
-            finally:
-                # Label even on failure so we don't re-attempt forever; the dedup
-                # collection is the source of truth for re-tries.
-                try:
-                    mark_processed(g.user, email["id"])
-                except Exception:
-                    pass
+            result = _process_message(
+                g.user, source="gmail", key=email["id"], text=text,
+                sender=sender_name, sender_org=sender_domain,
+            )
+            if result["skipped"]:
+                skipped += 1
+            elif result["event"] is not None:
+                saved.append(result["event"])
         return jsonify({
             "success": True,
             "checked": len(emails),
@@ -302,20 +294,14 @@ def gmail_check_all():
             for email in emails:
                 text = f"{email['subject']} {email['body']}"
                 sender_name, sender_domain = _split_email_from(email.get("sender", ""))
-                try:
-                    result = _process_message(
-                        user, source="gmail", key=email["id"], text=text,
-                        sender=sender_name, sender_org=sender_domain,
-                    )
-                    if result["skipped"]:
-                        summary["skipped"] += 1
-                    elif result["event"] is not None:
-                        summary["saved"] += 1
-                finally:
-                    try:
-                        mark_processed(user, email["id"])
-                    except Exception:
-                        pass
+                result = _process_message(
+                    user, source="gmail", key=email["id"], text=text,
+                    sender=sender_name, sender_org=sender_domain,
+                )
+                if result["skipped"]:
+                    summary["skipped"] += 1
+                elif result["event"] is not None:
+                    summary["saved"] += 1
         except ReauthRequired:
             summary["errors"].append({"user": user["id"], "err": "reauth_required"})
         except Exception as e:
