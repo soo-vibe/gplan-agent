@@ -37,11 +37,13 @@
 
         <activity
             android:name=".onboarding.OnboardingActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:launchMode="singleTop" />
 
         <activity
             android:name=".MainActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:launchMode="singleTask" />
 
         <!-- SMS 자동 감지: BROADCAST_SMS 권한 보호 (시스템만 발신 가능) -->
         <receiver
