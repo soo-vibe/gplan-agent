@@ -1,4 +1,4 @@
-package com.example.gplanagent
+package com.example.planna
 
 import android.content.Context
 import android.net.Uri
@@ -61,7 +61,7 @@ object RcsHelper {
         return out
     }
 
-    private const val TAG = "GPlanAgent"
+    private const val TAG = "Planna"
 
     /** Marks the highest seen id so subsequent queries skip already-processed rows. */
     fun updateLastSeenId(ctx: Context, id: Long) {

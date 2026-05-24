@@ -1,4 +1,4 @@
-package com.example.gplanagent.auth
+package com.example.planna.auth
 
 import android.content.Context
 
@@ -12,4 +12,8 @@ object AuthManager {
 
     fun getEmail(ctx: Context): String? =
         GoogleAuthManager.lastSignedInAccount(ctx)?.email
+
+    /** Display name from the Google account; null if not signed in or not provided. */
+    fun getDisplayName(ctx: Context): String? =
+        GoogleAuthManager.lastSignedInAccount(ctx)?.displayName
 }

@@ -1,4 +1,4 @@
-package com.example.gplanagent
+package com.example.planna
 
 /**
  * Cheap pre-filter for messaging notifications. Runs offline, no network.

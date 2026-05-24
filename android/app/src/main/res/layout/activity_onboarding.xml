@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:background="#FAFAFA">
+    android:background="@color/bg_void"
+    android:scrollbars="none">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -12,367 +13,325 @@
         android:orientation="vertical"
         android:padding="24dp">
 
-        <!-- Header -->
+        <!-- Header: monospace eyebrow + bold title. Same vertical rhythm
+             as the rest of the app — keeps the brand voice consistent
+             across screens. -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SYSTEM ACCESS"
+            android:textSize="11sp"
+            android:textColor="@color/neon_cyan"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.25"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="6dp" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="권한 설정"
-            android:textSize="28sp"
+            android:textSize="30sp"
             android:textStyle="bold"
-            android:textColor="#212121"
-            android:layout_marginTop="8dp" />
+            android:textColor="@color/text_primary" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="자동 일정 등록을 위해 다음 3가지 권한이 필요합니다."
             android:textSize="14sp"
-            android:textColor="#616161"
-            android:layout_marginTop="6dp" />
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="8dp" />
 
-        <!-- Progress -->
+        <!-- Progress strip — monospace counter on the right, thin neon
+             track underneath. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="6dp">
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="8dp">
 
             <TextView
-                android:id="@+id/tvProgress"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="0 / 3 허용됨"
-                android:textSize="13sp"
-                android:textColor="#616161" />
+                android:text="GRANTED"
+                android:textSize="10sp"
+                android:textColor="@color/text_tertiary"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.2" />
+
+            <TextView
+                android:id="@+id/tvProgress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 / 3"
+                android:textSize="12sp"
+                android:textColor="@color/neon_cyan"
+                android:fontFamily="monospace"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/progressIndicator"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:trackThickness="6dp"
-            app:trackCornerRadius="3dp"
-            app:indicatorColor="#1565C0"
-            app:trackColor="#E0E0E0"
+            android:layout_marginBottom="28dp"
+            app:trackThickness="3dp"
+            app:trackCornerRadius="2dp"
+            app:indicatorColor="@color/neon_cyan"
+            app:trackColor="@color/stroke_default"
             android:max="3"
             android:progress="0" />
 
-        <!-- SMS Card -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- SMS card: cyan accent. Each permission card mirrors the
+             channel color used on the main screen so the user learns
+             the color code through repetition. -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardElevation="0dp"
-            app:cardCornerRadius="12dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#E0E0E0"
-            app:cardBackgroundColor="#FFFFFF">
+            android:background="@drawable/card_event_cyan"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginBottom="10dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:baselineAligned="false">
+                android:gravity="center_vertical">
 
-                <View
-                    android:layout_width="4dp"
-                    android:layout_height="match_parent"
-                    android:background="#1565C0" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:layout_weight="1"
+                    android:text="SMS 읽기"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary" />
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="📱  SMS 읽기"
-                            android:textSize="17sp"
-                            android:textStyle="bold"
-                            android:textColor="#212121" />
-
-                        <TextView
-                            android:id="@+id/tvSmsStatus"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="필요"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="4dp" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="문자 메시지에 담긴 일정을 자동으로 등록합니다."
-                        android:textSize="13sp"
-                        android:textColor="#616161"
-                        android:layout_marginTop="6dp"
-                        android:layout_marginBottom="12dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnSmsAction"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="권한 요청"
-                        android:textColor="#FFFFFF"
-                        app:backgroundTint="#1565C0"
-                        app:cornerRadius="8dp" />
-                </LinearLayout>
+                <TextView
+                    android:id="@+id/tvSmsStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="REQUIRED"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.15"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <!-- Notification Listener Card -->
-        <com.google.android.material.card.MaterialCardView
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="문자 메시지에 담긴 일정을 자동으로 등록합니다."
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="14dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSmsAction"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="권한 요청"
+                android:textColor="@color/bg_void"
+                app:backgroundTint="@color/neon_cyan"
+                app:cornerRadius="6dp" />
+        </LinearLayout>
+
+        <!-- Notification listener card: magenta accent. -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardElevation="0dp"
-            app:cardCornerRadius="12dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#E0E0E0"
-            app:cardBackgroundColor="#FFFFFF">
+            android:background="@drawable/card_event_magenta"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginBottom="10dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:baselineAligned="false">
+                android:gravity="center_vertical">
 
-                <View
-                    android:layout_width="4dp"
-                    android:layout_height="match_parent"
-                    android:background="#6A1B9A" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:layout_weight="1"
+                    android:text="카카오톡 알림"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary" />
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="💬  카카오톡 알림"
-                            android:textSize="17sp"
-                            android:textStyle="bold"
-                            android:textColor="#212121" />
-
-                        <TextView
-                            android:id="@+id/tvNotificationStatus"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="필요"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="4dp" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="카카오톡 메시지를 읽으려면 알림 액세스가 필요합니다.\n설정 화면에서 GPlan Agent를 켜주세요."
-                        android:textSize="13sp"
-                        android:textColor="#616161"
-                        android:layout_marginTop="6dp"
-                        android:layout_marginBottom="12dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnNotificationAction"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="설정 열기"
-                        android:textColor="#FFFFFF"
-                        app:backgroundTint="#6A1B9A"
-                        app:cornerRadius="8dp" />
-                </LinearLayout>
+                <TextView
+                    android:id="@+id/tvNotificationStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="REQUIRED"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.15"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <!-- Battery Card -->
-        <com.google.android.material.card.MaterialCardView
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="카카오톡 메시지를 읽으려면 알림 액세스가 필요합니다.\n설정 화면에서 Planna를 켜주세요."
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="14dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnNotificationAction"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="설정 열기"
+                android:textColor="@color/bg_void"
+                app:backgroundTint="@color/neon_magenta"
+                app:cornerRadius="6dp" />
+        </LinearLayout>
+
+        <!-- Battery card: amber accent — distinct from the channel
+             colors because this is a system-level capability, not a
+             message source. -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardElevation="0dp"
-            app:cardCornerRadius="12dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#E0E0E0"
-            app:cardBackgroundColor="#FFFFFF">
+            android:background="@drawable/card_event_amber"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginBottom="10dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:baselineAligned="false">
+                android:gravity="center_vertical">
 
-                <View
-                    android:layout_width="4dp"
-                    android:layout_height="match_parent"
-                    android:background="#EF6C00" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:layout_weight="1"
+                    android:text="배터리 최적화 예외"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary" />
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="🔋  배터리 최적화 예외"
-                            android:textSize="17sp"
-                            android:textStyle="bold"
-                            android:textColor="#212121" />
-
-                        <TextView
-                            android:id="@+id/tvBatteryStatus"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="필요"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="4dp" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="백그라운드에서 메시지를 놓치지 않으려면 필요합니다.\n특히 삼성 갤럭시는 필수입니다."
-                        android:textSize="13sp"
-                        android:textColor="#616161"
-                        android:layout_marginTop="6dp"
-                        android:layout_marginBottom="12dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnBatteryAction"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="예외 등록"
-                        android:textColor="#FFFFFF"
-                        app:backgroundTint="#EF6C00"
-                        app:cornerRadius="8dp" />
-                </LinearLayout>
+                <TextView
+                    android:id="@+id/tvBatteryStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="REQUIRED"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.15"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <!-- Contacts Card (Optional) -->
-        <com.google.android.material.card.MaterialCardView
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="백그라운드에서 메시지를 놓치지 않으려면 필요합니다.\n특히 삼성 갤럭시는 필수입니다."
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="14dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnBatteryAction"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="예외 등록"
+                android:textColor="@color/bg_void"
+                app:backgroundTint="@color/neon_amber"
+                app:cornerRadius="6dp" />
+        </LinearLayout>
+
+        <!-- Contacts (optional) — violet accent so it visually reads as
+             "extra credit" vs the three required cards above. -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardElevation="0dp"
-            app:cardCornerRadius="12dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#E0E0E0"
-            app:cardBackgroundColor="#FFFFFF">
+            android:background="@drawable/card_event_violet"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:baselineAligned="false">
+                android:gravity="center_vertical">
 
-                <View
-                    android:layout_width="4dp"
-                    android:layout_height="match_parent"
-                    android:background="#2E7D32" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:layout_weight="1"
+                    android:text="연락처 (선택)"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary" />
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="👥  연락처 (선택)"
-                            android:textSize="17sp"
-                            android:textStyle="bold"
-                            android:textColor="#212121" />
-
-                        <TextView
-                            android:id="@+id/tvContactsStatus"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="필요"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="4dp" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="SMS 발신자의 이름과 소속을 일정에 함께 표시합니다.\n허용하지 않으면 전화번호로만 표시됩니다."
-                        android:textSize="13sp"
-                        android:textColor="#616161"
-                        android:layout_marginTop="6dp"
-                        android:layout_marginBottom="12dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnContactsAction"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="권한 요청"
-                        android:textColor="#FFFFFF"
-                        app:backgroundTint="#2E7D32"
-                        app:cornerRadius="8dp" />
-                </LinearLayout>
+                <TextView
+                    android:id="@+id/tvContactsStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="OPTIONAL"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.15"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="SMS 발신자의 이름과 소속을 일정에 함께 표시합니다.\n허용하지 않으면 전화번호로만 표시됩니다."
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="14dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnContactsAction"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="권한 요청"
+                android:textColor="@color/bg_void"
+                app:backgroundTint="@color/neon_violet"
+                app:cornerRadius="6dp" />
+        </LinearLayout>
+
+        <!-- Continue: cyan→magenta gradient when enabled (set in code).
+             Disabled state uses a subdued surface so the user can see
+             it but knows it's not actionable. -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnContinue"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="권한을 모두 허용해주세요"
+            android:text="필수 권한을 모두 허용해주세요"
             android:textSize="15sp"
             android:textStyle="bold"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_tertiary"
             android:enabled="false"
             android:paddingVertical="14dp"
-            app:backgroundTint="#1565C0"
-            app:cornerRadius="10dp" />
+            android:background="@drawable/btn_primary_disabled"
+            app:backgroundTint="@null"
+            app:cornerRadius="0dp"
+            app:rippleColor="#33FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSkip"
@@ -380,8 +339,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="나중에 설정"
-            android:textColor="#757575"
-            android:layout_marginTop="4dp" />
+            android:textColor="@color/text_tertiary"
+            android:layout_marginTop="6dp" />
 
     </LinearLayout>
 </ScrollView>

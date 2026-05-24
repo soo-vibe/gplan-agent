@@ -1,4 +1,4 @@
-package com.example.gplanagent
+package com.example.planna
 
 import android.Manifest
 import android.content.Context

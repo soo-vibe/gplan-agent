@@ -1,7 +1,7 @@
-package com.example.gplanagent
+package com.example.planna
 
 import android.content.Context
-import com.example.gplanagent.auth.GoogleAuthManager
+import com.example.planna.auth.GoogleAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl

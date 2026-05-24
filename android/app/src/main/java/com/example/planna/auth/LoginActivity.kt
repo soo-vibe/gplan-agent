@@ -1,4 +1,4 @@
-package com.example.gplanagent.auth
+package com.example.planna.auth
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,10 +7,10 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import com.example.gplanagent.MainActivity
-import com.example.gplanagent.R
-import com.example.gplanagent.onboarding.OnboardingActivity
-import com.example.gplanagent.onboarding.PermissionStatus
+import com.example.planna.MainActivity
+import com.example.planna.R
+import com.example.planna.onboarding.OnboardingActivity
+import com.example.planna.onboarding.PermissionStatus
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
 
@@ -59,6 +59,6 @@ class LoginActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val TAG = "GPlanAgent"
+        private const val TAG = "Planna"
     }
 }

@@ -1,6 +1,6 @@
 # Monitoring
 
-Alert policies for the gplan-agent Cloud Run backend, kept as JSON so they
+Alert policies for the planna Cloud Run backend, kept as JSON so they
 can be re-applied to a fresh project without clicking through the console.
 
 ## Active policies

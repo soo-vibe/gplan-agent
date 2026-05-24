@@ -1,6 +1,7 @@
-package com.example.gplanagent
+package com.example.planna
 
 import android.content.Context
+import com.example.planna.auth.AuthManager
 
 /**
  * End-to-end pipeline: backend /parse → client-side compose → Calendar insert.
@@ -25,7 +26,15 @@ object ScheduleProcessor {
         senderOrg: String = "",
         sourceKey: String = text,
     ): Outcome {
-        val parsed = ApiService.parse(ctx, text)
+        val userName = AuthManager.getDisplayName(ctx).orEmpty()
+        val parsed = ApiService.parse(
+            ctx = ctx,
+            message = text,
+            source = source,
+            sender = sender,
+            senderOrg = senderOrg,
+            userName = userName,
+        )
         if (!parsed.hasSchedule || parsed.date.isBlank()) {
             return Outcome(saved = false, noSchedule = true)
         }

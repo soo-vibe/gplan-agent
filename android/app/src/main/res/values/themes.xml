@@ -1,3 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <!--
+      Neon Futuristic Dark theme.
+
+      MaterialComponents NoActionBar base — we render our own headers per
+      screen since the stock ActionBar fights the dark palette and the
+      neon accents we use for source channels.
+
+      windowLightStatusBar=false keeps the status bar icons white over
+      our pitch-black background.
+    -->
+    <style name="Theme.Planna" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/neon_cyan</item>
+        <item name="colorPrimaryVariant">@color/neon_magenta</item>
+        <item name="colorOnPrimary">@color/bg_void</item>
+        <item name="colorSecondary">@color/neon_magenta</item>
+        <item name="colorOnSecondary">@color/bg_void</item>
+        <item name="colorSurface">@color/bg_surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="android:colorBackground">@color/bg_void</item>
+        <item name="android:windowBackground">@color/bg_void</item>
+        <item name="android:statusBarColor">@color/bg_void</item>
+        <item name="android:navigationBarColor">@color/bg_void</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:textColorHint">@color/text_dim</item>
+    </style>
+
 </resources>

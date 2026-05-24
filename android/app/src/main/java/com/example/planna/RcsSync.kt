@@ -1,8 +1,8 @@
-package com.example.gplanagent
+package com.example.planna
 
 import android.content.Context
 import android.util.Log
-import com.example.gplanagent.auth.AuthManager
+import com.example.planna.auth.AuthManager
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -52,5 +52,5 @@ object RcsSync {
         }
     }
 
-    private const val TAG = "GPlanAgent"
+    private const val TAG = "Planna"
 }

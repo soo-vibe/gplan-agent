@@ -3,79 +3,223 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:background="@color/bg_void"
+    android:padding="20dp">
 
+    <!-- Permission warning banner: shown only when one of the required
+         permissions is missing. Tapping opens OnboardingActivity. -->
     <TextView
         android:id="@+id/tvPermissionWarning"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        android:background="#FFF3E0"
+        android:background="@drawable/warning_banner"
         android:padding="12dp"
-        android:layout_marginBottom="10dp"
-        android:textColor="#E65100"
-        android:textSize="13sp"
-        android:drawablePadding="8dp"
-        android:text="⚠  권한 누락 — 일부 기능 동작 안 함\n탭해서 권한 설정으로 이동" />
+        android:layout_marginBottom="14dp"
+        android:textColor="@color/status_warning_fg"
+        android:textSize="12sp"
+        android:fontFamily="monospace"
+        android:text="! PERMISSION MISSING — TAP TO CONFIGURE" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="오늘 새로 등록된 일정"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="6dp" />
-
+    <!-- Brand mark row: gradient logo block + wordmark on the left,
+         action affordances on the right. The right-side text buttons
+         replace the ActionBar overflow menu since we switched to a
+         NoActionBar theme. -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="12dp">
+        android:gravity="center_vertical"
+        android:layout_marginBottom="28dp">
 
-        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:orientation="vertical"
-            android:background="#E3F2FD" android:padding="10dp" android:layout_marginEnd="4dp">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="SMS" android:textSize="11sp" android:textColor="#1565C0"/>
-            <TextView android:id="@+id/tvTodaySms" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:text="0"
-                android:textSize="24sp" android:textStyle="bold" android:textColor="#1565C0"/>
-        </LinearLayout>
+        <TextView
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/logo_gradient"
+            android:gravity="center"
+            android:text="P"
+            android:textColor="@color/bg_void"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
-        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:orientation="vertical"
-            android:background="#F3E5F5" android:padding="10dp" android:layout_marginEnd="4dp">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="KakaoTalk" android:textSize="11sp" android:textColor="#6A1B9A"/>
-            <TextView android:id="@+id/tvTodayKakao" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:text="0"
-                android:textSize="24sp" android:textStyle="bold" android:textColor="#6A1B9A"/>
-        </LinearLayout>
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="PLANNA"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:layout_marginStart="12dp" />
 
-        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:orientation="vertical"
-            android:background="#E8F5E9" android:padding="10dp">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Email" android:textSize="11sp" android:textColor="#2E7D32"/>
-            <TextView android:id="@+id/tvTodayGmail" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:text="0"
-                android:textSize="24sp" android:textStyle="bold" android:textColor="#2E7D32"/>
-        </LinearLayout>
+        <TextView
+            android:id="@+id/btnPermissions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="권한"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.1"
+            android:padding="8dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless" />
 
+        <TextView
+            android:id="@+id/btnLogout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LOGOUT"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.1"
+            android:padding="8dp"
+            android:layout_marginStart="4dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
+
+    <!-- Headline: "TODAY" in primary text, weight carries hierarchy. -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TODAY"
+        android:textColor="@color/neon_cyan"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.05" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="상세"
-        android:textStyle="bold"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp" />
+        android:text="AUTO-INDEXED EVENTS"
+        android:textColor="@color/text_tertiary"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:letterSpacing="0.15"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Stat row: per-channel counts. Each card uses a neon palette
+         drawable so the source code matches the channel color used in
+         event cards and the brand. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="24dp"
+        android:baselineAligned="false">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:background="@drawable/card_neon_cyan"
+            android:padding="14dp"
+            android:layout_marginEnd="6dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="SMS"
+                android:textColor="@color/neon_cyan"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.2" />
+
+            <TextView
+                android:id="@+id/tvTodaySms"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textSize="30sp"
+                android:textStyle="bold"
+                android:textColor="@color/neon_cyan"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:background="@drawable/card_neon_magenta"
+            android:padding="14dp"
+            android:layout_marginEnd="6dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="KAKAO"
+                android:textColor="@color/neon_magenta"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.2" />
+
+            <TextView
+                android:id="@+id/tvTodayKakao"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textSize="30sp"
+                android:textStyle="bold"
+                android:textColor="@color/neon_magenta"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:background="@drawable/card_neon_green"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="MAIL"
+                android:textColor="@color/neon_green"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.2" />
+
+            <TextView
+                android:id="@+id/tvTodayGmail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textSize="30sp"
+                android:textStyle="bold"
+                android:textColor="@color/neon_green"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Section label + thin divider for the event stream. -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="EVENT STREAM"
+        android:textColor="@color/text_tertiary"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        android:letterSpacing="0.2"
+        android:layout_marginBottom="8dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/stroke_subtle"
+        android:layout_marginBottom="12dp" />
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:scrollbars="none">
 
         <LinearLayout
             android:id="@+id/llSmsContainer"

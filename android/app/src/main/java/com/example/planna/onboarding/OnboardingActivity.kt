@@ -1,4 +1,4 @@
-package com.example.gplanagent.onboarding
+package com.example.planna.onboarding
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -9,8 +9,8 @@ import android.provider.Settings
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import com.example.gplanagent.MainActivity
-import com.example.gplanagent.R
+import com.example.planna.MainActivity
+import com.example.planna.R
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 

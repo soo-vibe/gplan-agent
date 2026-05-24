@@ -1,8 +1,8 @@
-package com.example.gplanagent.auth
+package com.example.planna.auth
 
 import android.app.Activity
 import android.content.Context
-import com.example.gplanagent.BuildConfig
+import com.example.planna.BuildConfig
 import com.google.android.gms.auth.GoogleAuthUtil
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount

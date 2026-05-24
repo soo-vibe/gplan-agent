@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Neon Futuristic Dark palette.
+
+      Background ramps from pure-black to near-black surface tones so that
+      neon accents (cyan / magenta / green) appear to glow against the
+      darkness. Channel colors map 1:1 to message sources:
+        - cyan    = SMS / RCS
+        - magenta = KakaoTalk
+        - green   = Gmail / Naver
+    -->
+
+    <!-- Surface ramp -->
+    <color name="bg_void">#000000</color>           <!-- root background -->
+    <color name="bg_surface">#0A0A0A</color>        <!-- cards -->
+    <color name="bg_surface_elevated">#121212</color>
+    <color name="stroke_subtle">#1F1F1F</color>     <!-- card borders -->
+    <color name="stroke_default">#2A2A2A</color>
+
+    <!-- Text ramp -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#A0A0A0</color>
+    <color name="text_tertiary">#707070</color>
+    <color name="text_dim">#505050</color>
+
+    <!-- Neon channel accents -->
+    <color name="neon_cyan">#00F5FF</color>         <!-- SMS / RCS -->
+    <color name="neon_magenta">#FF00E5</color>      <!-- KakaoTalk -->
+    <color name="neon_green">#00FF80</color>        <!-- Gmail / Naver -->
+    <color name="neon_amber">#FFB800</color>        <!-- Battery / warnings -->
+    <color name="neon_violet">#A855F7</color>       <!-- Contacts / optional -->
+
+    <!-- Neon translucent fills (used as card tint behind borders) -->
+    <color name="neon_cyan_dim">#1A00F5FF</color>
+    <color name="neon_magenta_dim">#1AFF00E5</color>
+    <color name="neon_green_dim">#1A00FF80</color>
+    <color name="neon_amber_dim">#1AFFB800</color>
+    <color name="neon_violet_dim">#1AA855F7</color>
+
+    <!-- Status -->
+    <color name="status_warning_bg">#1AFFB800</color>
+    <color name="status_warning_fg">#FFB800</color>
+    <color name="status_ok_bg">#1A00FF80</color>
+    <color name="status_ok_fg">#00FF80</color>
+</resources>

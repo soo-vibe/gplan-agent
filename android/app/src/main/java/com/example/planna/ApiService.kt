@@ -1,7 +1,7 @@
-package com.example.gplanagent
+package com.example.planna
 
 import android.content.Context
-import com.example.gplanagent.auth.GoogleAuthManager
+import com.example.planna.auth.GoogleAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.CertificatePinner
@@ -38,7 +38,7 @@ object ApiService {
      */
     private val pinner = CertificatePinner.Builder()
         .add(
-            "gplan-agent-173551063984.asia-northeast3.run.app",
+            "planna-173551063984.asia-northeast3.run.app",
             "sha256/YPtHaftLw6/0vnc2BnNKGF54xiCA28WFcccjkA4ypCM=", // GTS WR2 (intermediate)
             "sha256/hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=", // GTS Root R1
         )
@@ -80,9 +80,29 @@ object ApiService {
         val description: String,
     )
 
-    /** LLM-only parsing. Calendar write happens client-side via CalendarRepo. */
-    suspend fun parse(ctx: Context, message: String): ParsedSchedule = withContext(Dispatchers.IO) {
-        val body = JSONObject().put("message", message).toString().toRequestBody(JSON)
+    /**
+     * LLM-only parsing. Calendar write happens client-side via CalendarRepo.
+     *
+     * Context fields (source/sender/senderOrg/userName) are sent so the backend
+     * prompt can disambiguate "I" vs "you" in messages — e.g. distinguish a
+     * group invitation ("다들 참석부탁") from a sender's personal excuse
+     * ("저는 결혼식이 있어서 늦게 합류"). Backend may ignore them harmlessly
+     * if its prompt hasn't been updated yet.
+     */
+    suspend fun parse(
+        ctx: Context,
+        message: String,
+        source: String = "",
+        sender: String = "",
+        senderOrg: String = "",
+        userName: String = "",
+    ): ParsedSchedule = withContext(Dispatchers.IO) {
+        val payload = JSONObject().put("message", message)
+        if (source.isNotBlank()) payload.put("source", source)
+        if (sender.isNotBlank()) payload.put("sender", sender)
+        if (senderOrg.isNotBlank()) payload.put("sender_org", senderOrg)
+        if (userName.isNotBlank()) payload.put("user_name", userName)
+        val body = payload.toString().toRequestBody(JSON)
         val request = authedBuilder(ctx, "$BASE_URL/parse").post(body).build()
         client.newCall(request).execute().use { response ->
             handleAuth(response)

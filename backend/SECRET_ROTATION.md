@@ -22,12 +22,12 @@ $plain = $null
 
 # 2. Restart the service so the new env var is picked up. Cloud Run only
 #    re-reads secrets on revision boot.
-gcloud run services update gplan-agent `
+gcloud run services update planna `
     --region=asia-northeast3 `
     --update-secrets ANTHROPIC_API_KEY=anthropic-api-key:latest
 
 # 3. Verify by tailing /parse logs from the device:
-#    gcloud run services logs read gplan-agent --region=asia-northeast3 --limit=50
+#    gcloud run services logs read planna --region=asia-northeast3 --limit=50
 
 # 4. Disable the previous Anthropic key in the Anthropic console once the
 #    new one is confirmed working.
@@ -56,6 +56,6 @@ gcloud secrets versions destroy VERSION_ID --secret=anthropic-api-key
 | Item | Where stored | Rotation |
 |---|---|---|
 | Google Web OAuth client ID (`GOOGLE_WEB_CLIENT_ID` env var) | not sensitive — embedded in the APK; just the audience claim for ID tokens | only if you rotate the OAuth client |
-| Android release keystore (`release-gplan.jks`) | local `keystore/` + offline backup | only on confirmed compromise (rotation requires every user to uninstall + reinstall) |
+| Android release keystore (`release-planna.jks`) | local `keystore/` + offline backup | only on confirmed compromise (rotation requires every user to uninstall + reinstall) |
 | Keystore password | password manager (NOT in `RECOVERY.txt`) | with the keystore |
 | Google account login | Google account | per Google's recommendation (use 2FA, hardware key) |

@@ -1,4 +1,4 @@
-package com.example.gplanagent
+package com.example.planna
 
 import android.database.ContentObserver
 import android.net.Uri
@@ -7,7 +7,7 @@ import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import com.example.gplanagent.auth.AuthManager
+import com.example.planna.auth.AuthManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -103,6 +103,6 @@ class KakaoNotificationService : NotificationListenerService() {
     }
 
     companion object {
-        private const val TAG = "GPlanAgent"
+        private const val TAG = "Planna"
     }
 }

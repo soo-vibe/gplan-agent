@@ -22,11 +22,11 @@ def releaseKeyAlias = localProperties.getProperty('signing.keyAlias', '')
 def releaseKeyPassword = localProperties.getProperty('signing.keyPassword', '')
 
 android {
-    namespace 'com.example.gplanagent'
+    namespace 'com.example.planna'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.gplanagent"
+        applicationId "com.example.planna"
         minSdk 26
         targetSdk 34
         versionCode 2

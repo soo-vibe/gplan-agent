@@ -1,4 +1,4 @@
-package com.example.gplanagent
+package com.example.planna
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow

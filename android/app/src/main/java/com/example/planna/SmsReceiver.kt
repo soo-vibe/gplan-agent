@@ -1,11 +1,11 @@
-package com.example.gplanagent
+package com.example.planna
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
 import android.util.Log
-import com.example.gplanagent.auth.AuthManager
+import com.example.planna.auth.AuthManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -56,6 +56,6 @@ class SmsReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        private const val TAG = "GPlanAgent"
+        private const val TAG = "Planna"
     }
 }

@@ -1,24 +1,24 @@
-package com.example.gplanagent
+package com.example.planna
 
 import android.content.Intent
+import android.graphics.Typeface
 import android.os.Bundle
 import android.util.Log
+import android.util.TypedValue
 import android.view.Gravity
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.example.gplanagent.auth.AuthManager
-import com.example.gplanagent.auth.GoogleAuthManager
-import com.example.gplanagent.auth.LoginActivity
-import com.example.gplanagent.onboarding.OnboardingActivity
-import com.example.gplanagent.onboarding.PermissionStatus
+import com.example.planna.auth.AuthManager
+import com.example.planna.auth.GoogleAuthManager
+import com.example.planna.auth.LoginActivity
+import com.example.planna.onboarding.OnboardingActivity
+import com.example.planna.onboarding.PermissionStatus
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -45,8 +45,6 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
 
-        AuthManager.getEmail(this)?.let { supportActionBar?.subtitle = it }
-
         tvTodaySms = findViewById(R.id.tvTodaySms)
         tvTodayKakao = findViewById(R.id.tvTodayKakao)
         tvTodayGmail = findViewById(R.id.tvTodayGmail)
@@ -55,6 +53,15 @@ class MainActivity : AppCompatActivity() {
 
         tvPermissionWarning.setOnClickListener {
             startActivity(Intent(this, OnboardingActivity::class.java))
+        }
+
+        // Header action buttons replace the ActionBar overflow menu
+        // (we use a NoActionBar theme so the system menu never shows).
+        findViewById<TextView>(R.id.btnPermissions).setOnClickListener {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+        }
+        findViewById<TextView>(R.id.btnLogout).setOnClickListener {
+            confirmLogout()
         }
 
         loadStats()
@@ -100,38 +107,22 @@ class MainActivity : AppCompatActivity() {
         if (missing.isEmpty()) {
             tvPermissionWarning.visibility = View.GONE
         } else {
-            tvPermissionWarning.text = "⚠  ${missing.joinToString(" · ")} 권한 누락 — 탭해서 설정하기"
+            tvPermissionWarning.text = "! ${missing.joinToString(" / ")} 권한 누락 — 탭해서 설정"
             tvPermissionWarning.visibility = View.VISIBLE
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(0, MENU_PERMISSIONS, 0, "권한 설정")
-        menu.add(0, MENU_LOGOUT, 1, "로그아웃")
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            MENU_PERMISSIONS -> {
-                startActivity(Intent(this, OnboardingActivity::class.java))
-                return true
+    private fun confirmLogout() {
+        AlertDialog.Builder(this)
+            .setMessage("로그아웃 하시겠습니까?")
+            .setPositiveButton("로그아웃") { _, _ ->
+                lifecycleScope.launch {
+                    try { GoogleAuthManager.signOut(this@MainActivity) } catch (_: Exception) {}
+                    runOnUiThread { goToLogin() }
+                }
             }
-            MENU_LOGOUT -> {
-                AlertDialog.Builder(this)
-                    .setMessage("로그아웃 하시겠습니까?")
-                    .setPositiveButton("로그아웃") { _, _ ->
-                        lifecycleScope.launch {
-                            try { GoogleAuthManager.signOut(this@MainActivity) } catch (_: Exception) {}
-                            runOnUiThread { goToLogin() }
-                        }
-                    }
-                    .setNegativeButton("취소", null)
-                    .show()
-                return true
-            }
-        }
-        return super.onOptionsItemSelected(item)
+            .setNegativeButton("취소", null)
+            .show()
     }
 
     private fun loadStats() {
@@ -156,22 +147,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Builds an event row that mirrors the neon palette used on the
+     * stat cards above: each source maps to a card_event_* drawable
+     * (dark surface + neon left stripe), with the meta line in the
+     * channel's accent color and the title in primary white. Source
+     * label and time are kept in monospace to echo the brand voice.
+     */
     private fun createEventItemView(event: CalendarRepo.Event): View {
-        val outer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, 8, 0, 8)
-        }
+        val accentColor = ContextCompat.getColor(this, accentColorRes(event.source))
+        val cardBg = cardBackgroundRes(event.source)
+        val sourceLabel = sourceLabel(event.source)
 
-        val row = LinearLayout(this).apply {
+        val card = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-        }
-
-        val sourceColor = when (event.source) {
-            "sms", "rcs" -> 0xFF1565C0.toInt()
-            "kakao" -> 0xFF6A1B9A.toInt()
-            "gmail", "naver" -> 0xFF2E7D32.toInt()
-            else -> 0xFF757575.toInt()
+            background = ContextCompat.getDrawable(this@MainActivity, cardBg)
+            // Inner padding; left padding is slightly larger to clear the
+            // 2dp accent stripe drawn by the card_event_* layer-list.
+            setPadding(dp(14), dp(12), dp(10), dp(12))
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+            lp.bottomMargin = dp(8)
+            layoutParams = lp
         }
 
         val textColumn = LinearLayout(this).apply {
@@ -179,54 +179,84 @@ class MainActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
 
-        val titleView = TextView(this).apply {
-            text = "[${event.source.uppercase()}] ${event.title}"
-            textSize = 14f
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setTextColor(sourceColor)
-        }
-
-        val dateStr = try {
+        val timeStr = try {
             val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault())
-            val outputFormat = SimpleDateFormat("MM/dd (E) HH:mm", Locale.KOREAN)
+            val outputFormat = SimpleDateFormat("MM/dd HH:mm", Locale.KOREAN)
             outputFormat.format(inputFormat.parse(event.start)!!)
         } catch (e: Exception) { event.start }
 
-        val dateView = TextView(this).apply {
-            text = dateStr
-            textSize = 12f
-            setTextColor(resources.getColor(android.R.color.darker_gray, theme))
+        val metaView = TextView(this).apply {
+            text = "› $sourceLabel · $timeStr"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            setTextColor(accentColor)
+            typeface = Typeface.MONOSPACE
+            letterSpacing = 0.05f
         }
 
-        textColumn.addView(titleView)
-        textColumn.addView(dateView)
+        val titleView = TextView(this).apply {
+            text = event.title
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_primary))
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).also { it.topMargin = dp(3) }
+            layoutParams = lp
+        }
 
-        val deleteBtn = Button(this).apply {
-            text = "🗑"
-            textSize = 14f
-            minWidth = 0
-            minHeight = 0
-            minimumWidth = 0
-            minimumHeight = 0
-            setPadding(20, 8, 20, 8)
+        textColumn.addView(metaView)
+        textColumn.addView(titleView)
+
+        // Ghost-style delete: monospace × in the channel accent, no
+        // background — sits visually quieter than a filled button but
+        // stays discoverable next to the title.
+        val deleteBtn = TextView(this).apply {
+            text = "×"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_tertiary))
+            setPadding(dp(14), dp(4), dp(8), dp(4))
+            background = resources.getDrawable(
+                android.R.drawable.list_selector_background, theme
+            )
+            isClickable = event.id.isNotEmpty()
             isEnabled = event.id.isNotEmpty()
             setOnClickListener { confirmAndDelete(event) }
         }
 
-        row.addView(textColumn)
-        row.addView(deleteBtn)
-
-        val divider = View(this).apply {
-            setBackgroundColor(resources.getColor(android.R.color.darker_gray, theme))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 1
-            ).also { it.topMargin = 8 }
-        }
-
-        outer.addView(row)
-        outer.addView(divider)
-        return outer
+        card.addView(textColumn)
+        card.addView(deleteBtn)
+        return card
     }
+
+    /** Maps message source to its neon accent color resource. */
+    private fun accentColorRes(source: String): Int = when (source) {
+        "sms", "rcs" -> R.color.neon_cyan
+        "kakao" -> R.color.neon_magenta
+        "gmail", "naver" -> R.color.neon_green
+        else -> R.color.text_secondary
+    }
+
+    /** Maps message source to its event-card drawable (left stripe). */
+    private fun cardBackgroundRes(source: String): Int = when (source) {
+        "sms", "rcs" -> R.drawable.card_event_cyan
+        "kakao" -> R.drawable.card_event_magenta
+        "gmail", "naver" -> R.drawable.card_event_green
+        else -> R.drawable.card_surface
+    }
+
+    /** Short uppercase source label shown in the meta line. */
+    private fun sourceLabel(source: String): String = when (source) {
+        "sms" -> "SMS"
+        "rcs" -> "RCS"
+        "kakao" -> "KAKAO"
+        "gmail" -> "GMAIL"
+        "naver" -> "NAVER"
+        else -> source.uppercase()
+    }
+
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density).toInt()
 
     private fun confirmAndDelete(event: CalendarRepo.Event) {
         AlertDialog.Builder(this)
@@ -262,8 +292,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val TAG = "GPlanAgent"
-        private const val MENU_PERMISSIONS = 1
-        private const val MENU_LOGOUT = 2
+        private const val TAG = "Planna"
     }
 }

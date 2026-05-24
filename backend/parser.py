@@ -13,6 +13,8 @@ _FENCE_RE = re.compile(r"^\s*```(?:json)?\s*\n?(.*?)\n?\s*```\s*$", re.DOTALL)
 KST = ZoneInfo("Asia/Seoul")
 
 # Static instructions — eligible for Anthropic prompt caching (90% input-token discount).
+# Anthropic recommends ≥1024-token blocks for caching. Marking ephemeral is harmless
+# even if the block is short.
 _STATIC_SYSTEM = (
     "Extract schedule info from the message. "
     "Return JSON only, no other text. "
@@ -22,12 +24,23 @@ _STATIC_SYSTEM = (
     "If no schedule found, return {\"has_schedule\": false}. "
     "Rules: if no end_time, add 1 hour to start_time. if no time, use 09:00. "
     "meeting_url: extract Zoom/Google Meet/Microsoft Teams/Webex URL if present, else \"\". "
-    "Message may be in Korean or English."
+    "Message may be in Korean or English.\n\n"
+    "Subject disambiguation (uses context fields supplied below: sender, user_name, source):\n"
+    "1. First-person pronouns in the message body (\"저는\", \"제가\", \"전\", \"나는\", \"I\", \"my\") "
+    "always refer to sender, NOT user_name. user_name is the calendar owner (the reader), "
+    "not the speaker.\n"
+    "2. A sender's personal circumstance or non-attendance excuse is NOT a schedule. "
+    "If the message combines first-person + a reason phrase (\"있어서\", \"때문에\", \"관계로\") + "
+    "a concession/adjustment phrase (\"늦게\", \"일찍\", \"합류\", \"못 갑니다\", \"대신\", \"양해\", \"불참\"), "
+    "return {\"has_schedule\": false}. Example: \"저는 결혼식이 있어서 오후에 합류하겠습니다\" "
+    "→ not a schedule (sender is explaining their own situation, not inviting user_name).\n"
+    "3. Group invitations/announcements ARE schedules. If the message contains group-attendance "
+    "signals (\"참석 부탁\", \"오세요\", \"안내드립니다\", \"공지\", \"다들\", \"여러분\") together with "
+    "a time and/or location, treat it as a schedule user_name should attend.\n"
+    "4. When source is \"kakao\", be conservative: only treat as a schedule when explicit "
+    "group-invitation signals from rule 3 are present. Casual kakao chatter without those "
+    "signals is not a schedule."
 )
-
-# Anthropic recommends ≥1024-token blocks for caching; pad with style notes if needed.
-# Today's static prompt is ~600 chars and falls below the threshold, but caching will
-# kick in once usage volume warrants. Marking ephemeral is harmless either way.
 
 _client: anthropic.Anthropic | None = None
 
@@ -72,13 +85,32 @@ _TRANSIENT_ERRORS = (
 )
 
 
-def parse_schedule(message: str) -> dict:
+def parse_schedule(
+    message: str,
+    *,
+    source: str = "",
+    sender: str = "",
+    sender_org: str = "",
+    user_name: str = "",
+) -> dict:
     today = datetime.now(KST)
     tomorrow = today + timedelta(days=1)
+    context_parts: list[str] = []
+    if sender:
+        org_suffix = f" ({sender_org})" if sender_org else ""
+        context_parts.append(f"Message sender: {sender}{org_suffix}.")
+    if user_name:
+        context_parts.append(
+            f"Calendar owner / user_name (the reader, NOT the speaker): {user_name}."
+        )
+    if source:
+        context_parts.append(f"Message source: {source}.")
+    context_block = (" " + " ".join(context_parts)) if context_parts else ""
     dynamic_system = (
         "Today is " + today.strftime("%Y-%m-%d") + " (" + today.strftime("%A") + "). "
         "Tomorrow is " + tomorrow.strftime("%Y-%m-%d") + ". "
         "When the message says 'tomorrow' or 'naeeil' or '내일', use " + tomorrow.strftime("%Y-%m-%d") + "."
+        + context_block
     )
 
     client = _get_client()

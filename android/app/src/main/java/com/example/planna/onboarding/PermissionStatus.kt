@@ -1,4 +1,4 @@
-package com.example.gplanagent.onboarding
+package com.example.planna.onboarding
 
 import android.Manifest
 import android.content.Context

@@ -16,5 +16,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GPlanAgent"
+rootProject.name = "Planna"
 include ':app'

@@ -10,7 +10,7 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), overrid
 import logging_setup
 
 logging_setup.configure()
-log = logging.getLogger("gplan")
+log = logging.getLogger("planna")
 
 from parser import parse_schedule
 from user_context import require_auth
@@ -51,7 +51,13 @@ def parse():
         return jsonify({"error": "message field required"}), 400
     if len(message) > MAX_PARSE_MESSAGE_CHARS:
         return jsonify({"error": "message too long"}), 413
-    return jsonify(parse_schedule(message))
+    return jsonify(parse_schedule(
+        message,
+        source=(data.get("source") or "").strip(),
+        sender=(data.get("sender") or "").strip(),
+        sender_org=(data.get("sender_org") or "").strip(),
+        user_name=(data.get("user_name") or "").strip(),
+    ))
 
 
 if __name__ == "__main__":

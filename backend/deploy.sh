@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cloud Run deployment for the stateless parser-only GPlan Agent backend.
+# Cloud Run deployment for the stateless parser-only Planna backend.
 #
 # Architecture: the Android app holds the user's Google credentials and
 # writes events directly to Google Calendar. This service is just a parser:
@@ -23,9 +23,9 @@
 #
 # 4. Dedicated runtime service account (no broad IAM — this service has no
 #    Firestore/Calendar/Gmail access; just needs to read its own secret):
-#      RUNTIME_SA="gplan-agent-run@${PROJECT}.iam.gserviceaccount.com"
-#      gcloud iam service-accounts create gplan-agent-run \
-#        --display-name="GPlan Agent Cloud Run runtime"
+#      RUNTIME_SA="planna-run@${PROJECT}.iam.gserviceaccount.com"
+#      gcloud iam service-accounts create planna-run \
+#        --display-name="Planna Cloud Run runtime"
 #      gcloud secrets add-iam-policy-binding anthropic-api-key \
 #        --member="serviceAccount:${RUNTIME_SA}" \
 #        --role=roles/secretmanager.secretAccessor
@@ -40,9 +40,9 @@
 set -euo pipefail
 
 REGION="${REGION:-asia-northeast3}"
-SERVICE="${SERVICE:-gplan-agent}"
+SERVICE="${SERVICE:-planna}"
 PROJECT="$(gcloud config get-value project)"
-RUNTIME_SA="${RUNTIME_SA:-gplan-agent-run@${PROJECT}.iam.gserviceaccount.com}"
+RUNTIME_SA="${RUNTIME_SA:-planna-run@${PROJECT}.iam.gserviceaccount.com}"
 
 # Web OAuth client ID is the audience that ID tokens from the Android app
 # must claim. Not sensitive — embedded in the APK — so plain env var, not
